@@ -1,0 +1,1723 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Controle de Treinamentos</title>
+  <style>
+    :root {
+      --navy: #08094d;
+      --navy-2: #111267;
+      --orange: #ff5a2a;
+      --ink: #20243d;
+      --muted: #69708a;
+      --line: #dce1ed;
+      --soft: #f4f6fa;
+      --white: #fff;
+      --green: #137a55;
+      font-family: Inter, Aptos, "Segoe UI", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #eef1f7;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 22px clamp(18px, 3vw, 44px);
+      color: var(--white);
+      background:
+        radial-gradient(circle at 12% 35%, rgba(65, 94, 255, .35), transparent 24%),
+        linear-gradient(120deg, #05063f, var(--navy));
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: .15;
+      background-image:
+        linear-gradient(30deg, transparent 24%, #fff 25%, transparent 26%),
+        linear-gradient(150deg, transparent 24%, #fff 25%, transparent 26%);
+      background-size: 48px 84px;
+    }
+
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) 2fr minmax(340px, 1.3fr);
+      gap: 28px;
+      align-items: center;
+      max-width: 1800px;
+      margin: auto;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: flex-start;
+      min-width: 0;
+    }
+
+    .brand-logo {
+      width: clamp(170px, 15vw, 238px);
+      height: auto;
+      display: block;
+      filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .18));
+    }
+
+    .brand-tagline {
+      display: block;
+      margin-left: clamp(66px, 5.9vw, 94px);
+      margin-top: -10px;
+      font-size: clamp(8px, .72vw, 11px);
+      font-weight: 700;
+      letter-spacing: .7px;
+      text-transform: uppercase;
+      opacity: .92;
+    }
+
+    h1 {
+      margin: 0;
+      text-align: center;
+      font-size: clamp(25px, 2.2vw, 38px);
+      letter-spacing: -.8px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      min-height: 72px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--navy);
+      border-radius: 10px;
+      background: white;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, .16);
+    }
+
+    .stat-icon {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      color: white;
+      border-radius: 50%;
+      background: var(--navy);
+    }
+
+    .stat-icon svg {
+      width: 23px;
+      height: 23px;
+      display: block;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .stat strong {
+      display: block;
+      color: var(--orange);
+      font-size: 23px;
+      line-height: 1;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 5px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      padding: 15px clamp(18px, 3vw, 44px);
+      border-bottom: 1px solid var(--line);
+      background: white;
+      box-shadow: 0 5px 20px rgba(16, 22, 70, .06);
+    }
+
+    .month-nav, .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .month-label {
+      min-width: 190px;
+      text-align: center;
+      text-transform: capitalize;
+      color: var(--navy);
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .btn {
+      min-height: 40px;
+      padding: 9px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--navy);
+      background: white;
+      font-weight: 700;
+      transition: .18s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); border-color: #aab3ca; }
+    .btn-icon { width: 40px; padding: 0; font-size: 21px; }
+    .btn-primary { color: white; border-color: var(--orange); background: var(--orange); }
+    .btn-secondary { color: white; border-color: var(--navy); background: var(--navy); }
+
+    .workspace {
+      width: 100%;
+      padding: 20px clamp(10px, 2vw, 30px) 34px;
+    }
+
+    .table-card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 12px 32px rgba(31, 39, 86, .08);
+    }
+
+    .table-scroll { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      min-width: 1710px;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      height: 58px;
+      padding: 10px 8px;
+      color: white;
+      border-right: 1px solid #3d417b;
+      border-bottom: 3px solid var(--orange);
+      background: var(--navy);
+      font-size: 12px;
+      line-height: 1.25;
+      text-align: center;
+    }
+
+    tbody tr:nth-child(even) { background: #f8f9fc; }
+    tbody tr:hover { background: #f0f3fb; }
+
+    tbody td {
+      height: 48px;
+      padding: 5px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    tbody input, tbody select, tbody textarea {
+      width: 100%;
+      min-height: 36px;
+      padding: 7px 8px;
+      color: var(--ink);
+      border: 1px solid transparent;
+      border-radius: 6px;
+      outline: 0;
+      background: transparent;
+      font-size: 12px;
+    }
+
+    tbody textarea {
+      min-height: 36px;
+      height: 36px;
+      resize: vertical;
+    }
+
+    tbody input:focus, tbody select:focus, tbody textarea:focus {
+      border-color: #6574d8;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(101, 116, 216, .13);
+    }
+
+    tbody tr.is-locked {
+      background: #fbfcff;
+    }
+
+    tbody tr.is-locked input,
+    tbody tr.is-locked select,
+    tbody tr.is-locked textarea {
+      color: #343954;
+      opacity: 1;
+      cursor: not-allowed;
+    }
+
+    tbody tr.is-locked input:not([type="date"]),
+    tbody tr.is-locked select,
+    tbody tr.is-locked textarea {
+      background: rgba(244, 246, 250, .65);
+    }
+
+    .col-item { width: 55px; text-align: center; }
+    .col-date { width: 122px; }
+    .col-duration { width: 92px; }
+    .col-client { width: 140px; }
+    .col-module { width: 170px; }
+    .col-type { width: 180px; }
+    .col-request { width: 150px; }
+    .col-local { width: 115px; }
+    .col-dir { width: 225px; }
+    .col-survey { width: 145px; }
+    .col-cx { width: 120px; }
+    .col-notes { width: 180px; }
+    .col-actions { width: 145px; }
+
+    .row-number {
+      display: block;
+      padding-top: 10px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .row-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding-top: 2px;
+    }
+
+    .row-action {
+      min-height: 30px;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: white;
+      color: var(--navy);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .row-action:hover:not(:disabled) {
+      border-color: var(--navy);
+      box-shadow: 0 4px 12px rgba(8, 9, 77, .12);
+    }
+
+    .row-action:disabled {
+      cursor: not-allowed;
+      opacity: .45;
+    }
+
+    .save-row {
+      color: white;
+      border-color: var(--green);
+      background: var(--green);
+    }
+
+    .edit-row {
+      color: var(--navy);
+    }
+
+    .delete-row {
+      width: 30px;
+      padding: 0;
+      color: #9c3340;
+      font-size: 18px;
+    }
+
+    .delete-row:hover { background: #ffe9ec; }
+
+    .empty {
+      display: none;
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--navy);
+      font-size: 18px;
+    }
+
+    .footer-note {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 12px 16px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      background: #fafbfe;
+      font-size: 12px;
+    }
+
+    .save-status { color: var(--green); font-weight: 700; }
+
+    .view-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 14px clamp(18px, 3vw, 44px) 0;
+      background: white;
+    }
+
+    .tab-btn {
+      min-height: 42px;
+      padding: 10px 18px;
+      border: 1px solid var(--line);
+      border-bottom: 0;
+      border-radius: 12px 12px 0 0;
+      color: var(--navy);
+      background: #f8f9fc;
+      font-weight: 800;
+    }
+
+    .tab-btn.active {
+      color: white;
+      border-color: var(--navy);
+      background: var(--navy);
+    }
+
+    .view-panel { display: none; }
+    .view-panel.active { display: block; }
+
+    .dashboard {
+      padding: 20px clamp(10px, 2vw, 30px) 34px;
+    }
+
+    .dashboard-shell {
+      display: grid;
+      gap: 18px;
+      max-width: 1800px;
+      margin: auto;
+    }
+
+    .dashboard-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: white;
+      box-shadow: 0 12px 32px rgba(31, 39, 86, .08);
+    }
+
+    .dashboard-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px 10px;
+    }
+
+    .dashboard-card h2,
+    .dashboard-card h3 {
+      margin: 0;
+      color: var(--navy);
+      font-size: 18px;
+    }
+
+    .dashboard-card p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(145px, 1fr));
+      gap: 12px;
+      padding: 16px 18px 18px;
+    }
+
+    .filter-field label {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--navy);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .filter-field select,
+    .filter-field input {
+      width: 100%;
+      min-height: 38px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: white;
+      outline: 0;
+    }
+
+    .filter-actions {
+      display: flex;
+      align-items: end;
+      gap: 8px;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .kpi-card {
+      min-height: 112px;
+      padding: 16px;
+      border-radius: 14px;
+      background: white;
+      border: 1px solid var(--line);
+      box-shadow: 0 10px 26px rgba(31, 39, 86, .08);
+    }
+
+    .kpi-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .35px;
+    }
+
+    .kpi-card strong {
+      display: block;
+      margin-top: 10px;
+      color: var(--orange);
+      font-size: 28px;
+      line-height: 1.05;
+    }
+
+    .kpi-card small {
+      display: block;
+      margin-top: 7px;
+      color: var(--navy);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .chart-body {
+      min-height: 260px;
+      padding: 6px 18px 18px;
+    }
+
+    .bar-chart,
+    .column-chart {
+      display: grid;
+      gap: 10px;
+      height: 100%;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: minmax(110px, 170px) 1fr 42px;
+      gap: 10px;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .bar-label {
+      overflow: hidden;
+      color: var(--ink);
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bar-track {
+      height: 13px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #edf0f7;
+    }
+
+    .bar-fill {
+      height: 100%;
+      min-width: 4px;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--navy), #4f5be8);
+    }
+
+    .bar-value {
+      color: var(--orange);
+      font-weight: 900;
+      text-align: right;
+    }
+
+    .column-chart {
+      grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+      align-items: end;
+      min-height: 230px;
+      padding-top: 12px;
+    }
+
+    .column-item {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 8px;
+      align-items: end;
+      min-height: 220px;
+    }
+
+    .column-wrap {
+      position: relative;
+      display: flex;
+      align-items: end;
+      justify-content: center;
+      min-height: 165px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .column-fill {
+      width: min(44px, 72%);
+      min-height: 4px;
+      border-radius: 9px 9px 0 0;
+      background: linear-gradient(180deg, var(--orange), #ff8b61);
+    }
+
+    .column-value {
+      position: absolute;
+      bottom: calc(var(--height, 0%) + 6px);
+      color: var(--navy);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .column-label {
+      min-height: 32px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      word-break: break-word;
+    }
+
+    .donut-layout {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 18px;
+      align-items: center;
+      min-height: 230px;
+    }
+
+    .donut {
+      width: 170px;
+      height: 170px;
+      border-radius: 50%;
+      background: conic-gradient(var(--navy) 0deg, var(--orange) 0deg);
+      position: relative;
+      margin: auto;
+    }
+
+    .donut::after {
+      content: "";
+      position: absolute;
+      inset: 42px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+
+    .legend {
+      display: grid;
+      gap: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .legend-label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .legend-color {
+      width: 10px;
+      height: 10px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+    }
+
+    .insights-list {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(160px, 1fr));
+      gap: 12px;
+      padding: 0 18px 18px;
+    }
+
+    .insight-item {
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fafbfe;
+    }
+
+    .insight-item span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .insight-item strong {
+      display: block;
+      margin-top: 7px;
+      color: var(--navy);
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .executive-table {
+      min-width: 1160px;
+    }
+
+    .executive-table td {
+      padding: 9px 10px;
+      font-size: 12px;
+      vertical-align: middle;
+    }
+
+    .empty-chart {
+      display: grid;
+      place-items: center;
+      min-height: 190px;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      background: #fafbfe;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 10;
+      padding: 12px 17px;
+      color: white;
+      border-radius: 8px;
+      background: #232854;
+      box-shadow: 0 12px 30px rgba(0,0,0,.2);
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+      transition: .2s ease;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 980px) {
+      .hero-inner { grid-template-columns: 1fr 1fr; }
+      h1 { grid-column: 1 / -1; grid-row: 1; }
+      .brand { grid-row: 2; }
+      .stats { grid-row: 2; }
+      .filter-grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+      .charts-grid { grid-template-columns: 1fr; }
+      .insights-list { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+    }
+
+    @media (max-width: 650px) {
+      .hero-inner { display: flex; flex-direction: column; }
+      .brand { align-self: flex-start; }
+      .stats { width: 100%; }
+      .toolbar, .month-nav, .actions { justify-content: center; }
+      .toolbar { flex-direction: column; }
+      .footer-note { flex-direction: column; }
+      .actions .btn { flex: 1; }
+      .view-tabs { justify-content: center; }
+      .filter-grid, .kpi-grid, .insights-list { grid-template-columns: 1fr; }
+      .donut-layout { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      body { background: white; }
+      .toolbar, .view-tabs, .row-actions, .col-actions, .footer-note { display: none !important; }
+      .workspace { padding: 0; }
+      .table-card { border: 0; box-shadow: none; }
+      .table-scroll { overflow: visible; }
+      table { min-width: 100%; font-size: 8px; }
+      tbody input, tbody select, tbody textarea { font-size: 8px; padding: 2px; appearance: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div class="hero-inner">
+        <div class="brand" aria-label="Olos">
+          <img class="brand-logo" src="assets/olos-logo.png" alt="Olos">
+          <span class="brand-tagline">Elevando Experiências</span>
+        </div>
+        <h1>CONTROLE DE TREINAMENTOS</h1>
+        <section class="stats" aria-label="Indicadores do mês">
+          <div class="stat">
+            <span class="stat-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 6.5 12 3l8 3.5-8 3.5L4 6.5Z"></path>
+                <path d="M20 7v5"></path>
+                <path d="M7 9v4.5c0 1.4 2.2 2.5 5 2.5s5-1.1 5-2.5V9"></path>
+                <path d="M9 19h6"></path>
+                <path d="M12 16v3"></path>
+              </svg>
+            </span>
+            <div><strong id="totalTrainings">0</strong><span>Total de Treinamentos</span></div>
+          </div>
+          <div class="stat">
+            <span class="stat-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M16 11.5a3.5 3.5 0 1 0-3.5-3.5"></path>
+                <path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"></path>
+                <path d="M3 19c.4-3.1 2.2-5 5-5s4.6 1.9 5 5"></path>
+                <path d="M13.5 15c.7-.6 1.7-1 2.8-1 2.5 0 4.1 1.8 4.5 5"></path>
+              </svg>
+            </span>
+            <div><strong id="totalClients">0</strong><span>Clientes Atendidos</span></div>
+          </div>
+        </section>
+      </div>
+    </header>
+
+    <nav class="view-tabs" aria-label="Alternar visão">
+      <button class="tab-btn active" type="button" data-view="entriesView">Lançamentos</button>
+      <button class="tab-btn" type="button" data-view="dashboardView">Dashboard Executivo</button>
+    </nav>
+
+    <section class="view-panel active" id="entriesView">
+    <section class="toolbar">
+      <nav class="month-nav" aria-label="Navegação por mês">
+        <button class="btn btn-icon" id="prevMonth" title="Mês anterior" aria-label="Mês anterior">‹</button>
+        <div class="month-label" id="monthLabel"></div>
+        <button class="btn btn-icon" id="nextMonth" title="Próximo mês" aria-label="Próximo mês">›</button>
+        <button class="btn" id="todayMonth">Mês atual</button>
+      </nav>
+      <div class="actions">
+        <button class="btn btn-primary" id="addRow">＋ Novo treinamento</button>
+        <button class="btn btn-secondary" id="exportCsv">↓ Exportar CSV</button>
+        <button class="btn" id="printPage">Imprimir</button>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <div class="table-card">
+        <div class="table-scroll">
+          <table aria-label="Treinamentos do mês">
+            <thead>
+              <tr>
+                <th class="col-item">Item</th>
+                <th class="col-date">Data</th>
+                <th class="col-duration">Duração</th>
+                <th class="col-client">Cliente</th>
+                <th class="col-module">Módulos</th>
+                <th class="col-type">Tipo</th>
+                <th class="col-request">Solicitação</th>
+                <th class="col-local">Local</th>
+                <th class="col-dir">Diretório - Lista de Participantes</th>
+                <th class="col-dir">Diretório - Avaliação</th>
+                <th class="col-survey">Envio da Pesquisa de Satisfação</th>
+                <th class="col-cx">Recurso CX</th>
+                <th class="col-notes">Observação</th>
+                <th class="col-actions">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="trainingBody"></tbody>
+          </table>
+          <div class="empty" id="emptyState">
+            <strong>Nenhum treinamento neste mês.</strong>
+            Clique em “Novo treinamento” para começar o preenchimento.
+          </div>
+        </div>
+        <footer class="footer-note">
+          <span>Os rascunhos ficam salvos automaticamente; use Salvar para bloquear o registro.</span>
+          <span class="save-status" id="saveStatus">Tudo salvo</span>
+        </footer>
+      </div>
+    </section>
+    </section>
+
+    <section class="view-panel dashboard" id="dashboardView">
+      <div class="dashboard-shell">
+        <section class="dashboard-card">
+          <div class="dashboard-card-header">
+            <div>
+              <h2>Dashboard Executivo</h2>
+              <p>Visão analítica dos treinamentos realizados pela equipe.</p>
+            </div>
+          </div>
+          <div class="filter-grid">
+            <div class="filter-field">
+              <label for="filterScope">Período</label>
+              <select id="filterScope">
+                <option value="month">Período filtrado</option>
+                <option value="all">Visão consolidada geral</option>
+              </select>
+            </div>
+            <div class="filter-field">
+              <label for="filterMonth">Mês</label>
+              <select id="filterMonth"></select>
+            </div>
+            <div class="filter-field">
+              <label for="filterYear">Ano</label>
+              <select id="filterYear"></select>
+            </div>
+            <div class="filter-field">
+              <label for="filterClient">Cliente</label>
+              <select id="filterClient"></select>
+            </div>
+            <div class="filter-field">
+              <label for="filterCx">Recurso CX</label>
+              <select id="filterCx"></select>
+            </div>
+            <div class="filter-field">
+              <label for="filterRequester">Solicitante</label>
+              <select id="filterRequester"></select>
+            </div>
+            <div class="filter-field">
+              <label for="filterType">Tipo</label>
+              <select id="filterType"></select>
+            </div>
+            <div class="filter-field">
+              <label for="filterModule">Módulo</label>
+              <select id="filterModule"></select>
+            </div>
+            <div class="filter-actions">
+              <button class="btn btn-secondary" type="button" id="applyDashboardFilters">Aplicar filtros</button>
+              <button class="btn" type="button" id="clearDashboardFilters">Limpar</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="kpi-grid" aria-label="Indicadores executivos">
+          <div class="kpi-card"><span>Total de treinamentos</span><strong id="kpiTotalTrainings">0</strong><small>No período selecionado</small></div>
+          <div class="kpi-card"><span>Clientes atendidos</span><strong id="kpiTotalClients">0</strong><small>Clientes únicos</small></div>
+          <div class="kpi-card"><span>Recursos CX envolvidos</span><strong id="kpiTotalCx">0</strong><small>Recursos únicos</small></div>
+          <div class="kpi-card"><span>Média por recurso</span><strong id="kpiAvgCx">0</strong><small>Treinamentos / recurso</small></div>
+          <div class="kpi-card"><span>Cliente mais recorrente</span><strong id="kpiTopClient">-</strong><small id="kpiTopClientCount">Sem dados</small></div>
+          <div class="kpi-card"><span>Maior solicitante</span><strong id="kpiTopRequester">-</strong><small id="kpiTopRequesterCount">Sem dados</small></div>
+        </section>
+
+        <section class="dashboard-card">
+          <div class="dashboard-card-header">
+            <div>
+              <h3>Insights do período</h3>
+              <p>Leitura automática dos principais destaques do filtro selecionado.</p>
+            </div>
+          </div>
+          <div class="insights-list" id="insightsList"></div>
+        </section>
+
+        <section class="charts-grid">
+          <article class="dashboard-card">
+            <div class="dashboard-card-header"><div><h3>Treinamentos por Recurso CX</h3><p id="chartCxPeriodLabel">No período selecionado</p></div></div>
+            <div class="chart-body" id="chartCxMonth"></div>
+          </article>
+          <article class="dashboard-card">
+            <div class="dashboard-card-header"><div><h3>Evolução mensal</h3><p>Quantidade de treinamentos ao longo dos meses</p></div></div>
+            <div class="chart-body" id="chartMonthlyEvolution"></div>
+          </article>
+          <article class="dashboard-card">
+            <div class="dashboard-card-header"><div><h3>Ranking por Recurso CX</h3><p>Ranking consolidado no filtro aplicado</p></div></div>
+            <div class="chart-body" id="chartCxRanking"></div>
+          </article>
+          <article class="dashboard-card">
+            <div class="dashboard-card-header"><div><h3>Clientes recorrentes</h3><p>Clientes com maior volume de treinamentos</p></div></div>
+            <div class="chart-body" id="chartClients"></div>
+          </article>
+          <article class="dashboard-card">
+            <div class="dashboard-card-header"><div><h3>Solicitações por solicitante</h3><p>Volume por pessoa solicitante</p></div></div>
+            <div class="chart-body" id="chartRequesters"></div>
+          </article>
+          <article class="dashboard-card">
+            <div class="dashboard-card-header"><div><h3>Treinamentos por módulo</h3><p>Distribuição por conteúdo aplicado</p></div></div>
+            <div class="chart-body" id="chartModules"></div>
+          </article>
+          <article class="dashboard-card">
+            <div class="dashboard-card-header"><div><h3>Treinamentos por modalidade</h3><p>Presencial, remoto ou na Olos</p></div></div>
+            <div class="chart-body" id="chartLocation"></div>
+          </article>
+        </section>
+
+        <section class="dashboard-card">
+          <div class="dashboard-card-header">
+            <div>
+              <h3>Detalhamento dos Treinamentos</h3>
+              <p>Base executiva respeitando os filtros selecionados.</p>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="executive-table" aria-label="Detalhamento dos treinamentos">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Cliente</th>
+                  <th>Módulo</th>
+                  <th>Tipo</th>
+                  <th>Solicitante</th>
+                  <th>Local</th>
+                  <th>Recurso CX</th>
+                  <th>Observação</th>
+                </tr>
+              </thead>
+              <tbody id="dashboardDetails"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <template id="rowTemplate">
+    <tr>
+      <td><span class="row-number"></span></td>
+      <td><input type="date" data-field="date" aria-label="Data"></td>
+      <td><input type="time" data-field="duration" aria-label="Duração"></td>
+      <td><input type="text" data-field="client" placeholder="Nome do cliente" aria-label="Cliente"></td>
+      <td>
+        <select data-field="module" aria-label="Módulos">
+          <option value="">Selecione</option>
+          <option>Olos Monitor</option>
+          <option>Configuração</option>
+          <option>Mailing &amp; Estratégia</option>
+          <option>Estratégia</option>
+          <option>Estratégia Automatizada</option>
+          <option>Relatórios</option>
+          <option>Gravações</option>
+          <option>Todos os Módulos</option>
+          <option>Módulos p/ Supervisão</option>
+          <option>Módulos p/ Monitoria</option>
+          <option>Módulo Customizado Cliente</option>
+        </select>
+      </td>
+      <td>
+        <select data-field="type" aria-label="Tipo">
+          <option value="">Selecione</option>
+          <option>Completo</option>
+          <option>Completo_Implantação</option>
+          <option>Dúvidas_Chamados</option>
+          <option>Texto</option>
+          <option>Analytics</option>
+          <option>Reciclagem (Overview)</option>
+          <option>Pilotagem_Boas Práticas</option>
+          <option>Supervisores_Monitoria</option>
+          <option>Monitoria</option>
+          <option>Olos Multimídia</option>
+        </select>
+      </td>
+      <td><input type="text" data-field="requester" placeholder="Solicitante" aria-label="Solicitação"></td>
+      <td>
+        <select data-field="location" aria-label="Local">
+          <option value="">Selecione</option>
+          <option>Remoto</option>
+          <option>Presencial</option>
+          <option>Na Olos</option>
+        </select>
+      </td>
+      <td><input type="text" data-field="participantsDirectory" placeholder="Cole o caminho ou link" aria-label="Diretório da lista de participantes"></td>
+      <td><input type="text" data-field="evaluationDirectory" placeholder="Cole o caminho ou link" aria-label="Diretório da avaliação"></td>
+      <td>
+        <select data-field="survey" aria-label="Envio da pesquisa de satisfação">
+          <option value="">Selecione</option>
+          <option>Sim</option>
+          <option>Não</option>
+        </select>
+      </td>
+      <td><input type="text" data-field="cxResource" placeholder="Nome" aria-label="Recurso CX"></td>
+      <td><textarea data-field="notes" placeholder="Observações" aria-label="Observação"></textarea></td>
+      <td>
+        <div class="row-actions">
+          <button class="row-action save-row" type="button">Salvar</button>
+          <button class="row-action edit-row" type="button">Editar</button>
+          <button class="row-action delete-row" type="button" title="Excluir treinamento" aria-label="Excluir treinamento">×</button>
+        </div>
+      </td>
+    </tr>
+  </template>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = "olos.trainingControl.v1";
+      const body = document.querySelector("#trainingBody");
+      const template = document.querySelector("#rowTemplate");
+      const monthLabel = document.querySelector("#monthLabel");
+      const emptyState = document.querySelector("#emptyState");
+      const saveStatus = document.querySelector("#saveStatus");
+      const toast = document.querySelector("#toast");
+      const totalTrainings = document.querySelector("#totalTrainings");
+      const totalClients = document.querySelector("#totalClients");
+      const dashboardEls = {
+        filterScope: document.querySelector("#filterScope"),
+        filterMonth: document.querySelector("#filterMonth"),
+        filterYear: document.querySelector("#filterYear"),
+        filterClient: document.querySelector("#filterClient"),
+        filterCx: document.querySelector("#filterCx"),
+        filterRequester: document.querySelector("#filterRequester"),
+        filterType: document.querySelector("#filterType"),
+        filterModule: document.querySelector("#filterModule"),
+        kpiTotalTrainings: document.querySelector("#kpiTotalTrainings"),
+        kpiTotalClients: document.querySelector("#kpiTotalClients"),
+        kpiTotalCx: document.querySelector("#kpiTotalCx"),
+        kpiAvgCx: document.querySelector("#kpiAvgCx"),
+        kpiTopClient: document.querySelector("#kpiTopClient"),
+        kpiTopClientCount: document.querySelector("#kpiTopClientCount"),
+        kpiTopRequester: document.querySelector("#kpiTopRequester"),
+        kpiTopRequesterCount: document.querySelector("#kpiTopRequesterCount"),
+        insightsList: document.querySelector("#insightsList"),
+        details: document.querySelector("#dashboardDetails"),
+        chartCxPeriodLabel: document.querySelector("#chartCxPeriodLabel"),
+        charts: {
+          cxMonth: document.querySelector("#chartCxMonth"),
+          monthlyEvolution: document.querySelector("#chartMonthlyEvolution"),
+          cxRanking: document.querySelector("#chartCxRanking"),
+          clients: document.querySelector("#chartClients"),
+          requesters: document.querySelector("#chartRequesters"),
+          modules: document.querySelector("#chartModules"),
+          location: document.querySelector("#chartLocation")
+        }
+      };
+      const monthNames = [
+        "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+      ];
+      const chartColors = ["#08094d", "#ff5a2a", "#4f5be8", "#137a55", "#9c5cff", "#f0a600", "#18a1b8"];
+      const fields = [
+        "date", "duration", "client", "module", "type", "requester", "location",
+        "participantsDirectory", "evaluationDirectory", "survey", "cxResource", "notes"
+      ];
+      const detailFields = fields.filter(field => field !== "date");
+
+      let selectedMonth = startOfMonth(new Date());
+      let records = loadRecords();
+      let saveTimer;
+
+      function startOfMonth(date) {
+        return new Date(date.getFullYear(), date.getMonth(), 1);
+      }
+
+      function monthKey(date) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      }
+
+      function localDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function loadRecords() {
+        try {
+          const savedRecords = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+          return savedRecords.map(record => ({ locked: false, ...record }));
+        } catch {
+          return [];
+        }
+      }
+
+      function persist() {
+        saveStatus.textContent = "Salvando...";
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+          saveStatus.textContent = "Tudo salvo";
+        }, 180);
+      }
+
+      function recordMonth(record) {
+        return record.date ? record.date.slice(0, 7) : record.month;
+      }
+
+      function currentRecords() {
+        const key = monthKey(selectedMonth);
+        return records.filter(record => recordMonth(record) === key);
+      }
+
+      function makeRecord() {
+        const now = new Date();
+        const isCurrentMonth = monthKey(now) === monthKey(selectedMonth);
+        return {
+          id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+          month: monthKey(selectedMonth),
+          date: localDate(isCurrentMonth ? now : selectedMonth),
+          duration: "",
+          client: "",
+          module: "",
+          type: "",
+          requester: "",
+          location: "",
+          participantsDirectory: "",
+          evaluationDirectory: "",
+          survey: "",
+          cxResource: "",
+          notes: "",
+          locked: false
+        };
+      }
+
+      function clearRecordDetails(record) {
+        detailFields.forEach(field => {
+          record[field] = "";
+        });
+      }
+
+      function render() {
+        const monthRecords = currentRecords();
+        monthLabel.textContent = selectedMonth.toLocaleDateString("pt-BR", {
+          month: "long",
+          year: "numeric"
+        });
+
+        body.innerHTML = "";
+        monthRecords
+          .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
+          .forEach((record, index) => {
+            const row = template.content.firstElementChild.cloneNode(true);
+            row.dataset.id = record.id;
+            row.classList.toggle("is-locked", Boolean(record.locked));
+            row.querySelector(".row-number").textContent = index + 1;
+
+            fields.forEach(field => {
+              const control = row.querySelector(`[data-field="${field}"]`);
+              control.value = record[field] || "";
+              control.disabled = Boolean(record.locked);
+              if (field === "date") {
+                control.addEventListener("change", event => updateRecord(record.id, field, event.target.value));
+              } else {
+                control.addEventListener("input", event => updateRecord(record.id, field, event.target.value));
+                control.addEventListener("change", event => updateRecord(record.id, field, event.target.value));
+              }
+            });
+
+            row.querySelector(".save-row").disabled = Boolean(record.locked);
+            row.querySelector(".edit-row").disabled = !record.locked;
+            row.querySelector(".save-row").addEventListener("click", () => lockRecord(record.id));
+            row.querySelector(".edit-row").addEventListener("click", () => unlockRecord(record.id));
+            row.querySelector(".delete-row").addEventListener("click", () => deleteRecord(record.id));
+            body.appendChild(row);
+          });
+
+        emptyState.style.display = monthRecords.length ? "none" : "block";
+        updateStats(monthRecords);
+        renderDashboard();
+      }
+
+      function updateRecord(id, field, value) {
+        const record = records.find(item => item.id === id);
+        if (!record) return;
+        if (record.locked) {
+          showToast("Clique em Editar para alterar este treinamento.");
+          render();
+          return;
+        }
+        let shouldRender = false;
+        const previousValue = record[field] || "";
+        record[field] = value;
+        if (field === "date") {
+          if (previousValue !== value) {
+            clearRecordDetails(record);
+          }
+          if (value) {
+            record.month = value.slice(0, 7);
+            const [year, month] = record.month.split("-").map(Number);
+            const changedToAnotherMonth = record.month !== monthKey(selectedMonth);
+
+            if (changedToAnotherMonth) {
+              selectedMonth = new Date(year, month - 1, 1);
+            }
+          }
+          shouldRender = true;
+        }
+        persist();
+        updateStats(currentRecords());
+        renderDashboard();
+        if (shouldRender) {
+          render();
+        }
+      }
+
+      function lockRecord(id) {
+        const record = records.find(item => item.id === id);
+        if (!record) return;
+        record.locked = true;
+        persist();
+        render();
+        showToast("Treinamento salvo e bloqueado para edição.");
+      }
+
+      function unlockRecord(id) {
+        const record = records.find(item => item.id === id);
+        if (!record) return;
+        record.locked = false;
+        persist();
+        render();
+        requestAnimationFrame(() => {
+          const row = body.querySelector(`[data-id="${record.id}"]`);
+          row?.querySelector('[data-field="date"]')?.focus();
+        });
+        showToast("Edição liberada para este treinamento.");
+      }
+
+      function deleteRecord(id) {
+        records = records.filter(item => item.id !== id);
+        persist();
+        render();
+        showToast("Treinamento excluído.");
+      }
+
+      function updateStats(monthRecords) {
+        totalTrainings.textContent = monthRecords.length;
+        const clients = new Set(
+          monthRecords.map(record => record.client.trim().toLocaleLowerCase("pt-BR")).filter(Boolean)
+        );
+        totalClients.textContent = clients.size;
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function fieldValue(record, field) {
+        return String(record[field] || "").trim();
+      }
+
+      function uniqueValues(field) {
+        return [...new Set(records.map(record => fieldValue(record, field)).filter(Boolean))]
+          .sort((a, b) => a.localeCompare(b, "pt-BR"));
+      }
+
+      function setOptions(select, values, placeholder = "Todos") {
+        const previous = select.value;
+        select.innerHTML = `<option value="">${placeholder}</option>` + values
+          .map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+          .join("");
+        if (values.includes(previous)) {
+          select.value = previous;
+        }
+      }
+
+      function populateDashboardFilters() {
+        const currentYear = selectedMonth.getFullYear();
+        const years = [...new Set([
+          currentYear,
+          ...records.map(record => Number((recordMonth(record) || "").slice(0, 4))).filter(Boolean)
+        ])].sort((a, b) => b - a);
+
+        const selectedFilterMonth = dashboardEls.filterMonth.options.length
+          ? dashboardEls.filterMonth.value
+          : String(selectedMonth.getMonth() + 1).padStart(2, "0");
+        const selectedFilterYear = dashboardEls.filterYear.options.length
+          ? dashboardEls.filterYear.value
+          : String(currentYear);
+
+        dashboardEls.filterMonth.innerHTML = `<option value="">Todos</option>` + monthNames
+          .map((name, index) => `<option value="${String(index + 1).padStart(2, "0")}">${name}</option>`)
+          .join("");
+        dashboardEls.filterYear.innerHTML = `<option value="">Todos</option>` + years
+          .map(year => `<option value="${year}">${year}</option>`)
+          .join("");
+
+        dashboardEls.filterMonth.value = selectedFilterMonth;
+        dashboardEls.filterYear.value = selectedFilterYear;
+        setOptions(dashboardEls.filterClient, uniqueValues("client"));
+        setOptions(dashboardEls.filterCx, uniqueValues("cxResource"));
+        setOptions(dashboardEls.filterRequester, uniqueValues("requester"));
+        setOptions(dashboardEls.filterType, uniqueValues("type"));
+        setOptions(dashboardEls.filterModule, uniqueValues("module"));
+      }
+
+      function dashboardFilters() {
+        return {
+          scope: dashboardEls.filterScope.value,
+          month: dashboardEls.filterMonth.value,
+          year: dashboardEls.filterYear.value,
+          client: dashboardEls.filterClient.value,
+          cxResource: dashboardEls.filterCx.value,
+          requester: dashboardEls.filterRequester.value,
+          type: dashboardEls.filterType.value,
+          module: dashboardEls.filterModule.value
+        };
+      }
+
+      function filteredDashboardRecords(filters = dashboardFilters()) {
+        return records.filter(record => {
+          const key = recordMonth(record) || "";
+          const [year, month] = key.split("-");
+          const monthMatches = filters.scope === "all" || (
+            (!filters.month || month === filters.month) &&
+            (!filters.year || year === filters.year)
+          );
+
+          return monthMatches &&
+            (!filters.client || fieldValue(record, "client") === filters.client) &&
+            (!filters.cxResource || fieldValue(record, "cxResource") === filters.cxResource) &&
+            (!filters.requester || fieldValue(record, "requester") === filters.requester) &&
+            (!filters.type || fieldValue(record, "type") === filters.type) &&
+            (!filters.module || fieldValue(record, "module") === filters.module);
+        });
+      }
+
+      function countBy(items, field) {
+        return items.reduce((acc, record) => {
+          const label = fieldValue(record, field) || "Não informado";
+          acc[label] = (acc[label] || 0) + 1;
+          return acc;
+        }, {});
+      }
+
+      function sortedEntries(counts, limit = 10) {
+        return Object.entries(counts)
+          .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR"))
+          .slice(0, limit);
+      }
+
+      function topEntry(items, field) {
+        return sortedEntries(countBy(items.filter(record => fieldValue(record, field)), field), 1)[0] || ["-", 0];
+      }
+
+      function uniqueCount(items, field) {
+        return new Set(items.map(record => fieldValue(record, field)).filter(Boolean)).size;
+      }
+
+      function formatNumber(value) {
+        return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(value || 0);
+      }
+
+      function formatDate(value) {
+        if (!value) return "-";
+        const [year, month, day] = value.split("-");
+        return `${day}/${month}/${year}`;
+      }
+
+      function renderEmpty(container, message = "Sem dados para exibir neste filtro.") {
+        container.innerHTML = `<div class="empty-chart">${message}</div>`;
+      }
+
+      function renderBarChart(container, entries, limit = 8) {
+        const data = entries.slice(0, limit);
+        if (!data.length) return renderEmpty(container);
+        const max = Math.max(...data.map(([, value]) => value), 1);
+        container.innerHTML = `<div class="bar-chart">${data.map(([label, value]) => `
+          <div class="bar-row" title="${escapeHtml(label)}">
+            <span class="bar-label">${escapeHtml(label)}</span>
+            <span class="bar-track"><span class="bar-fill" style="width:${Math.max(5, (value / max) * 100)}%"></span></span>
+            <span class="bar-value">${value}</span>
+          </div>
+        `).join("")}</div>`;
+      }
+
+      function renderColumnChart(container, entries, limit = 12) {
+        const data = entries.slice(0, limit);
+        if (!data.length) return renderEmpty(container);
+        const max = Math.max(...data.map(([, value]) => value), 1);
+        container.innerHTML = `<div class="column-chart">${data.map(([label, value]) => {
+          const height = Math.max(4, (value / max) * 100);
+          return `
+            <div class="column-item" title="${escapeHtml(label)}">
+              <div class="column-wrap" style="--height:${height}%">
+                <span class="column-value">${value}</span>
+                <span class="column-fill" style="height:${height}%"></span>
+              </div>
+              <span class="column-label">${escapeHtml(label)}</span>
+            </div>
+          `;
+        }).join("")}</div>`;
+      }
+
+      function renderDonutChart(container, entries) {
+        if (!entries.length) return renderEmpty(container);
+        const total = entries.reduce((sum, [, value]) => sum + value, 0);
+        let start = 0;
+        const gradient = entries.map(([, value], index) => {
+          const end = start + (value / total) * 360;
+          const segment = `${chartColors[index % chartColors.length]} ${start}deg ${end}deg`;
+          start = end;
+          return segment;
+        }).join(", ");
+        container.innerHTML = `
+          <div class="donut-layout">
+            <div class="donut" style="background: conic-gradient(${gradient})"></div>
+            <div class="legend">
+              ${entries.map(([label, value], index) => `
+                <div class="legend-item">
+                  <span class="legend-label"><i class="legend-color" style="background:${chartColors[index % chartColors.length]}"></i>${escapeHtml(label)}</span>
+                  <span class="bar-value">${value}</span>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      function monthLabelFromKey(key) {
+        const [year, month] = key.split("-");
+        return `${monthNames[Number(month) - 1].slice(0, 3)}/${year.slice(2)}`;
+      }
+
+      function previousMonthKey(year, month) {
+        const date = new Date(Number(year), Number(month) - 2, 1);
+        return monthKey(date);
+      }
+
+      function periodLabel(filters) {
+        if (filters.scope === "all") return "base consolidada";
+        if (filters.year && !filters.month) return `ano de ${filters.year}`;
+        if (filters.year && filters.month) return `${monthNames[Number(filters.month) - 1]} de ${filters.year}`;
+        return "período filtrado";
+      }
+
+      function recordsForMonthWithFilters(key, filters) {
+        const monthFilters = { ...filters, scope: "month", month: key.slice(5, 7), year: key.slice(0, 4) };
+        return filteredDashboardRecords(monthFilters);
+      }
+
+      function recordsForYearWithFilters(year, filters) {
+        const yearFilters = { ...filters, scope: "month", month: "", year: String(year) };
+        return filteredDashboardRecords(yearFilters);
+      }
+
+      function renderDashboard() {
+        populateDashboardFilters();
+        const filters = dashboardFilters();
+        const consolidatedView = filters.scope === "all";
+        dashboardEls.filterMonth.disabled = consolidatedView;
+        dashboardEls.filterYear.disabled = consolidatedView;
+        const data = filteredDashboardRecords(filters).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+        const cxPeriodData = filters.scope === "all"
+          ? data
+          : filteredDashboardRecords({ ...filters, client: "", cxResource: "", requester: "", type: "", module: "" });
+
+        const [topClient, topClientCount] = topEntry(data, "client");
+        const [topRequester, topRequesterCount] = topEntry(data, "requester");
+        const [topCx, topCxCount] = topEntry(data, "cxResource");
+        const [topModule, topModuleCount] = topEntry(data, "module");
+        const cxCount = uniqueCount(data, "cxResource");
+
+        dashboardEls.kpiTotalTrainings.textContent = data.length;
+        dashboardEls.kpiTotalClients.textContent = uniqueCount(data, "client");
+        dashboardEls.kpiTotalCx.textContent = cxCount;
+        dashboardEls.kpiAvgCx.textContent = formatNumber(cxCount ? data.length / cxCount : 0);
+        dashboardEls.kpiTopClient.textContent = topClient;
+        dashboardEls.kpiTopClientCount.textContent = topClientCount ? `${topClientCount} treinamento(s)` : "Sem dados";
+        dashboardEls.kpiTopRequester.textContent = topRequester;
+        dashboardEls.kpiTopRequesterCount.textContent = topRequesterCount ? `${topRequesterCount} solicitação(ões)` : "Sem dados";
+        dashboardEls.chartCxPeriodLabel.textContent = `No ${periodLabel(filters)}`;
+
+        let comparisonText = "Disponível na visão mensal ou anual.";
+        if (filters.scope === "month" && filters.month && filters.year) {
+          const previousKey = previousMonthKey(filters.year, filters.month);
+          const previousCount = recordsForMonthWithFilters(previousKey, filters).length;
+          if (previousCount) {
+            const diff = data.length - previousCount;
+            comparisonText = `${diff >= 0 ? "+" : ""}${diff} vs. mês anterior (${previousCount})`;
+          } else {
+            comparisonText = "Sem dados no mês anterior.";
+          }
+        } else if (filters.scope === "month" && !filters.month && filters.year) {
+          const previousYear = Number(filters.year) - 1;
+          const previousCount = recordsForYearWithFilters(previousYear, filters).length;
+          if (previousCount) {
+            const diff = data.length - previousCount;
+            comparisonText = `${diff >= 0 ? "+" : ""}${diff} vs. ano anterior (${previousCount})`;
+          } else {
+            comparisonText = "Sem dados no ano anterior.";
+          }
+        }
+
+        const insights = [
+          ["Recurso CX que mais aplicou", topCxCount ? `${topCx} (${topCxCount})` : "Sem dados"],
+          ["Cliente mais recorrente", topClientCount ? `${topClient} (${topClientCount})` : "Sem dados"],
+          ["Módulo mais aplicado", topModuleCount ? `${topModule} (${topModuleCount})` : "Sem dados"],
+          ["Maior volume de solicitações", topRequesterCount ? `${topRequester} (${topRequesterCount})` : "Sem dados"],
+          ["Comparativo do período", comparisonText]
+        ];
+        dashboardEls.insightsList.innerHTML = insights.map(([label, value]) => `
+          <div class="insight-item"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>
+        `).join("");
+
+        renderColumnChart(dashboardEls.charts.cxMonth, sortedEntries(countBy(cxPeriodData, "cxResource"), 10));
+        const evolutionBase = filters.scope === "all"
+          ? data
+          : filteredDashboardRecords({ ...filters, month: "" });
+        const monthCounts = evolutionBase.reduce((acc, record) => {
+          const key = recordMonth(record);
+          if (key) acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        }, {});
+        const monthEntries = sortedEntries(monthCounts, 999)
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([key, value]) => [monthLabelFromKey(key), value]);
+        renderColumnChart(dashboardEls.charts.monthlyEvolution, monthEntries, 12);
+        renderBarChart(dashboardEls.charts.cxRanking, sortedEntries(countBy(data, "cxResource"), 10));
+        renderBarChart(dashboardEls.charts.clients, sortedEntries(countBy(data, "client"), 10));
+        renderBarChart(dashboardEls.charts.requesters, sortedEntries(countBy(data, "requester"), 10));
+        renderColumnChart(dashboardEls.charts.modules, sortedEntries(countBy(data, "module"), 10));
+        renderDonutChart(dashboardEls.charts.location, sortedEntries(countBy(data, "location"), 7));
+
+        dashboardEls.details.innerHTML = data.length ? data.map(record => `
+          <tr>
+            <td>${formatDate(record.date)}</td>
+            <td>${escapeHtml(record.client || "-")}</td>
+            <td>${escapeHtml(record.module || "-")}</td>
+            <td>${escapeHtml(record.type || "-")}</td>
+            <td>${escapeHtml(record.requester || "-")}</td>
+            <td>${escapeHtml(record.location || "-")}</td>
+            <td>${escapeHtml(record.cxResource || "-")}</td>
+            <td>${escapeHtml(record.notes || "-")}</td>
+          </tr>
+        `).join("") : `
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:28px;">Sem treinamentos para os filtros selecionados.</td></tr>
+        `;
+      }
+
+      function moveMonth(offset) {
+        selectedMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + offset, 1);
+        render();
+      }
+
+      function addRow() {
+        const record = makeRecord();
+        records.push(record);
+        persist();
+        render();
+        requestAnimationFrame(() => {
+          const newRow = body.querySelector(`[data-id="${record.id}"]`);
+          newRow?.querySelector('[data-field="date"]')?.focus();
+          newRow?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      }
+
+      function csvCell(value) {
+        return `"${String(value || "").replaceAll('"', '""')}"`;
+      }
+
+      function exportCsv() {
+        const monthRecords = currentRecords();
+        if (!monthRecords.length) {
+          showToast("Não há dados neste mês para exportar.");
+          return;
+        }
+
+        const headers = [
+          "Item", "Data", "Duração", "Cliente", "Módulos", "Tipo", "Solicitação", "Local",
+          "Diretório - Lista de Participantes", "Diretório - Avaliação",
+          "Envio da Pesquisa de Satisfação", "Recurso CX", "Observação"
+        ];
+        const rows = monthRecords.map((record, index) => [
+          index + 1, record.date, record.duration, record.client, record.module, record.type,
+          record.requester, record.location, record.participantsDirectory, record.evaluationDirectory,
+          record.survey, record.cxResource, record.notes
+        ]);
+        const csv = "\uFEFF" + [headers, ...rows].map(row => row.map(csvCell).join(";")).join("\r\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `treinamentos-${monthKey(selectedMonth)}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+        showToast("Arquivo CSV gerado.");
+      }
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => toast.classList.remove("show"), 2200);
+      }
+
+      document.querySelector("#prevMonth").addEventListener("click", () => moveMonth(-1));
+      document.querySelector("#nextMonth").addEventListener("click", () => moveMonth(1));
+      document.querySelector("#todayMonth").addEventListener("click", () => {
+        selectedMonth = startOfMonth(new Date());
+        render();
+      });
+      document.querySelector("#addRow").addEventListener("click", addRow);
+      document.querySelector("#exportCsv").addEventListener("click", exportCsv);
+      document.querySelector("#printPage").addEventListener("click", () => window.print());
+      document.querySelectorAll(".tab-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll(".tab-btn").forEach(tab => tab.classList.remove("active"));
+          document.querySelectorAll(".view-panel").forEach(panel => panel.classList.remove("active"));
+          button.classList.add("active");
+          document.querySelector(`#${button.dataset.view}`).classList.add("active");
+          if (button.dataset.view === "dashboardView") {
+            dashboardEls.filterMonth.value = String(selectedMonth.getMonth() + 1).padStart(2, "0");
+            dashboardEls.filterYear.value = String(selectedMonth.getFullYear());
+            renderDashboard();
+          }
+        });
+      });
+      document.querySelector("#applyDashboardFilters").addEventListener("click", renderDashboard);
+      document.querySelector("#clearDashboardFilters").addEventListener("click", () => {
+        dashboardEls.filterScope.value = "month";
+        dashboardEls.filterMonth.value = String(selectedMonth.getMonth() + 1).padStart(2, "0");
+        dashboardEls.filterYear.value = String(selectedMonth.getFullYear());
+        dashboardEls.filterClient.value = "";
+        dashboardEls.filterCx.value = "";
+        dashboardEls.filterRequester.value = "";
+        dashboardEls.filterType.value = "";
+        dashboardEls.filterModule.value = "";
+        renderDashboard();
+      });
+      [
+        dashboardEls.filterScope, dashboardEls.filterMonth, dashboardEls.filterYear,
+        dashboardEls.filterClient, dashboardEls.filterCx, dashboardEls.filterRequester,
+        dashboardEls.filterType, dashboardEls.filterModule
+      ].forEach(control => control.addEventListener("change", renderDashboard));
+
+      render();
+    })();
+  </script>
+</body>
+</html>
