@@ -17,7 +17,9 @@ Abra `index.html` em um navegador moderno. O painel permite:
 - acompanhar treinamentos e horas por Recurso CX e por cliente no dashboard;
 - imprimir a visão mensal.
 
-Os registros são mantidos no armazenamento local do navegador (`localStorage`). Para compartilhar ou guardar uma cópia, use **Exportar CSV**.
+Os registros são sincronizados pelo Firebase/Firestore e ficam disponíveis para todas as pessoas que acessam o mesmo link. O navegador também mantém uma cópia local para preservar o trabalho em caso de falha temporária de conexão.
+
+Na primeira abertura da versão sincronizada, os dados históricos existentes neste navegador são migrados automaticamente para a base compartilhada.
 
 ## Layout da importação histórica
 

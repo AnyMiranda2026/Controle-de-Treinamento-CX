@@ -1209,9 +1209,28 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+    import {
+      getFirestore, collection, doc, getDocs, onSnapshot, writeBatch
+    } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+
     (() => {
       const STORAGE_KEY = "olos.trainingControl.v1";
+      const firebaseConfig = {
+        apiKey: "AIzaSyA1aHMbvcW5Ye8YCs58OvABf1L80Y8RXo4",
+        authDomain: "controle-de-treinamentos-cx.firebaseapp.com",
+        projectId: "controle-de-treinamentos-cx",
+        storageBucket: "controle-de-treinamentos-cx.firebasestorage.app",
+        messagingSenderId: "703041684942",
+        appId: "1:703041684942:web:77a02dc1d53166fe0d979f",
+        measurementId: "G-M2938RVM5W"
+      };
+      const firebaseApp = initializeApp(firebaseConfig);
+      const firebaseAuth = getAuth(firebaseApp);
+      const firestore = getFirestore(firebaseApp);
+      const trainingsCollection = collection(firestore, "trainings");
       const body = document.querySelector("#trainingBody");
       const template = document.querySelector("#rowTemplate");
       const monthLabel = document.querySelector("#monthLabel");
@@ -1278,6 +1297,11 @@
       let selectedMonth = startOfMonth(new Date());
       let records = loadRecords();
       let saveTimer;
+      let cloudSaveTimer;
+      let cloudReady = false;
+      let applyingCloudSnapshot = false;
+      const dirtyCloudIds = new Set();
+      const pendingCloudDeletes = new Set();
       let pickerYear = selectedMonth.getFullYear();
       let customModuleRecordId = null;
 
@@ -1311,13 +1335,114 @@
         }
       }
 
-      function persist() {
+      function persist(changedIds = []) {
+        const ids = Array.isArray(changedIds) ? changedIds : [changedIds];
+        ids.filter(Boolean).forEach(id => dirtyCloudIds.add(id));
         saveStatus.textContent = "Salvando...";
         clearTimeout(saveTimer);
         saveTimer = setTimeout(() => {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-          saveStatus.textContent = "Tudo salvo";
+          if (!cloudReady) {
+            saveStatus.textContent = "Salvo neste navegador · conectando...";
+            return;
+          }
+          saveStatus.textContent = "Sincronizando...";
+          scheduleCloudSync();
         }, 180);
+      }
+
+      function cloudRecord(record) {
+        return JSON.parse(JSON.stringify(record));
+      }
+
+      function scheduleCloudSync() {
+        if (!cloudReady || applyingCloudSnapshot) return;
+        clearTimeout(cloudSaveTimer);
+        cloudSaveTimer = setTimeout(syncAllRecords, 350);
+      }
+
+      async function syncAllRecords() {
+        if (!cloudReady) return;
+        const dirtyIds = [...dirtyCloudIds];
+        const deleteIds = [...pendingCloudDeletes];
+        if (!dirtyIds.length && !deleteIds.length) {
+          saveStatus.textContent = "Histórico sincronizado";
+          return;
+        }
+        dirtyIds.forEach(id => dirtyCloudIds.delete(id));
+        deleteIds.forEach(id => pendingCloudDeletes.delete(id));
+        try {
+          const upserts = records.filter(record => dirtyIds.includes(record.id));
+          await commitCloudOperations(upserts, deleteIds);
+          saveStatus.textContent = "Histórico sincronizado";
+          if (dirtyCloudIds.size || pendingCloudDeletes.size) scheduleCloudSync();
+        } catch (error) {
+          dirtyIds.forEach(id => dirtyCloudIds.add(id));
+          deleteIds.forEach(id => pendingCloudDeletes.add(id));
+          console.error("Falha ao sincronizar histórico:", error);
+          saveStatus.textContent = "Sem conexão · dados preservados localmente";
+        }
+      }
+
+      async function commitCloudOperations(upserts = [], deleteIds = []) {
+        const operations = [
+          ...upserts.map(record => ({ type: "set", record })),
+          ...deleteIds.map(id => ({ type: "delete", id }))
+        ];
+        for (let index = 0; index < operations.length; index += 400) {
+          const batch = writeBatch(firestore);
+          operations.slice(index, index + 400).forEach(operation => {
+            if (operation.type === "set") {
+              batch.set(doc(trainingsCollection, operation.record.id), cloudRecord(operation.record));
+            } else {
+              batch.delete(doc(trainingsCollection, operation.id));
+            }
+          });
+          await batch.commit();
+        }
+      }
+
+      function queueCloudDelete(id) {
+        if (!id) return;
+        pendingCloudDeletes.add(id);
+        if (cloudReady) scheduleCloudSync();
+      }
+
+      async function initializeSharedHistory() {
+        saveStatus.textContent = "Conectando ao histórico compartilhado...";
+        try {
+          await signInAnonymously(firebaseAuth);
+          const snapshot = await getDocs(trainingsCollection);
+          const cloudIds = new Set(snapshot.docs.map(item => item.id));
+          const localOnly = records.filter(record => !cloudIds.has(record.id));
+
+          if (localOnly.length) {
+            await commitCloudOperations(localOnly);
+          }
+
+          cloudReady = true;
+          onSnapshot(trainingsCollection, liveSnapshot => {
+            applyingCloudSnapshot = true;
+            records = liveSnapshot.docs.map(item => ({
+              locked: false,
+              customModules: [],
+              dates: [],
+              ...item.data(),
+              id: item.id
+            }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+            render();
+            saveStatus.textContent = "Histórico sincronizado";
+            applyingCloudSnapshot = false;
+          }, error => {
+            console.error("Falha ao acompanhar histórico:", error);
+            saveStatus.textContent = "Sem conexão · dados preservados localmente";
+          });
+        } catch (error) {
+          console.error("Firebase indisponível:", error);
+          saveStatus.textContent = "Somente neste navegador · revise o Firebase";
+          showToast("Não foi possível conectar ao histórico compartilhado.");
+        }
       }
 
       function recordMonth(record) {
@@ -1451,7 +1576,7 @@
           }
           shouldRender = true;
         }
-        persist();
+        persist(record.id);
         updateStats(currentRecords());
         renderDashboard();
         if (shouldRender) {
@@ -1480,7 +1605,7 @@
           return;
         }
         record.locked = true;
-        persist();
+        persist(record.id);
         render();
         showToast("Treinamento salvo e bloqueado para edição.");
       }
@@ -1506,8 +1631,9 @@
         }
         target.locked = true;
         records = records.filter(item => item.id !== source.id);
+        queueCloudDelete(source.id);
         selectedMonth = startOfMonth(new Date(`${source.date}T12:00:00`));
-        persist();
+        persist(target.id);
         render();
         showToast("Treinamentos mesclados e salvos.");
       }
@@ -1516,7 +1642,7 @@
         const record = records.find(item => item.id === id);
         if (!record) return;
         record.locked = false;
-        persist();
+        persist(record.id);
         render();
         requestAnimationFrame(() => {
           const row = body.querySelector(`[data-id="${record.id}"]`);
@@ -1527,6 +1653,7 @@
 
       function deleteRecord(id) {
         records = records.filter(item => item.id !== id);
+        queueCloudDelete(id);
         persist();
         render();
         showToast("Treinamento excluído.");
@@ -1600,7 +1727,7 @@
         if (otherCustomModule.value.trim()) selected.push(otherCustomModule.value.trim());
         record.customModules = [...new Set(selected)];
         if (!record.customModules.length) return showToast("Selecione ao menos um módulo.");
-        persist();
+        persist(record.id);
         closeCustomModuleDialog();
         render();
       }
@@ -1932,7 +2059,7 @@
       function addRow() {
         const record = makeRecord();
         records.push(record);
-        persist();
+        persist(record.id);
         render();
         requestAnimationFrame(() => {
           const newRow = body.querySelector(`[data-id="${record.id}"]`);
@@ -2047,24 +2174,27 @@
             };
             if (indexes.date < 0) throw new Error("A coluna Data é obrigatória.");
             let imported = 0, ignored = 0;
+            const importedIds = [];
             rows.slice(1).forEach(values => {
               const get = field => indexes[field] >= 0 ? String(values[indexes[field]] || "").trim() : "";
               const date = normalizeImportedDate(get("date"));
               if (!date) { ignored++; return; }
               const additionalDates = get("dates").split(/[|,]/).map(normalizeImportedDate).filter(Boolean);
               const customModules = get("customModules").split(/[|,]/).map(value => value.trim()).filter(Boolean);
+              const importedId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
               records.push({
-                id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+                id: importedId,
                 month: date.slice(0, 7), date, dates: [...new Set([date, ...additionalDates])].sort(),
                 duration: normalizeDuration(get("duration")), client: get("client"), module: get("module") || (customModules.length ? "Módulo Customizado Cliente" : ""), customModules,
                 type: get("type"), requester: get("requester"), location: get("location"),
                 participantsDirectory: get("participantsDirectory"), evaluationDirectory: get("evaluationDirectory"),
                 survey: get("survey"), cxResource: get("cxResource"), notes: get("notes"), locked: true
               });
+              importedIds.push(importedId);
               imported++;
             });
             if (!imported) throw new Error("Nenhuma linha com data válida foi encontrada.");
-            persist();
+            persist(importedIds);
             render();
             showToast(`${imported} registro(s) importado(s)${ignored ? `; ${ignored} ignorado(s)` : ""}.`);
           } catch (error) {
@@ -2160,6 +2290,7 @@
       ].forEach(control => control.addEventListener("change", renderDashboard));
 
       render();
+      initializeSharedHistory();
     })();
   </script>
 </body>
