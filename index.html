@@ -176,12 +176,104 @@
 
     .month-label {
       min-width: 190px;
+      border: 0;
+      background: transparent;
       text-align: center;
       text-transform: capitalize;
       color: var(--navy);
       font-size: 18px;
       font-weight: 800;
+      cursor: pointer;
     }
+
+    .month-label:hover { color: var(--orange); }
+
+    .month-picker {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(4, 5, 45, .55);
+    }
+
+    .month-picker.open { display: grid; }
+
+    .month-picker-card,
+    .dialog-card {
+      width: min(560px, 100%);
+      padding: 22px;
+      border-radius: 16px;
+      background: white;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
+    }
+
+    .month-picker-head,
+    .dialog-head,
+    .dialog-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .month-picker-head strong,
+    .dialog-head strong { color: var(--navy); font-size: 20px; }
+
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .month-option {
+      min-height: 48px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--navy);
+      background: #f8f9fc;
+      font-weight: 800;
+    }
+
+    .month-option.active { color: white; border-color: var(--orange); background: var(--orange); }
+
+    .dialog-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 35;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(4, 5, 45, .58);
+    }
+
+    .dialog-overlay.open { display: grid; }
+    .dialog-card p { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .dialog-actions { justify-content: flex-end; margin-top: 18px; }
+
+    .custom-module-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      max-height: 300px;
+      margin-top: 14px;
+      overflow: auto;
+    }
+
+    .custom-module-list label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .custom-module-list input { width: auto; }
+    .dialog-card .other-module { width: 100%; margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
 
     .btn {
       min-height: 40px;
@@ -488,7 +580,7 @@
 
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(6, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 12px;
     }
 
@@ -832,14 +924,17 @@
     <section class="toolbar">
       <nav class="month-nav" aria-label="Navegação por mês">
         <button class="btn btn-icon" id="prevMonth" title="Mês anterior" aria-label="Mês anterior">‹</button>
-        <div class="month-label" id="monthLabel"></div>
+        <button class="month-label" id="monthLabel" type="button" title="Escolher mês e ano"></button>
         <button class="btn btn-icon" id="nextMonth" title="Próximo mês" aria-label="Próximo mês">›</button>
         <button class="btn" id="todayMonth">Mês atual</button>
       </nav>
       <div class="actions">
         <button class="btn btn-primary" id="addRow">＋ Novo treinamento</button>
+        <button class="btn" id="importCsv">↑ Importar histórico</button>
+        <button class="btn" id="downloadTemplate">Baixar modelo</button>
         <button class="btn btn-secondary" id="exportCsv">↓ Exportar CSV</button>
         <button class="btn" id="printPage">Imprimir</button>
+        <input type="file" id="importFile" accept=".csv,text/csv" hidden>
       </div>
     </section>
 
@@ -934,6 +1029,7 @@
 
         <section class="kpi-grid" aria-label="Indicadores executivos">
           <div class="kpi-card"><span>Total de treinamentos</span><strong id="kpiTotalTrainings">0</strong><small>No período selecionado</small></div>
+          <div class="kpi-card"><span>Total de horas</span><strong id="kpiTotalHours">0 h</strong><small>Carga horária no período</small></div>
           <div class="kpi-card"><span>Clientes atendidos</span><strong id="kpiTotalClients">0</strong><small>Clientes únicos</small></div>
           <div class="kpi-card"><span>Recursos CX envolvidos</span><strong id="kpiTotalCx">0</strong><small>Recursos únicos</small></div>
           <div class="kpi-card"><span>Média por recurso</span><strong id="kpiAvgCx">0</strong><small>Treinamentos / recurso</small></div>
@@ -980,6 +1076,14 @@
             <div class="dashboard-card-header"><div><h3>Treinamentos por modalidade</h3><p>Presencial, remoto ou na Olos</p></div></div>
             <div class="chart-body" id="chartLocation"></div>
           </article>
+          <article class="dashboard-card">
+            <div class="dashboard-card-header"><div><h3>Horas por Recurso CX</h3><p>Carga horária aplicada por analista</p></div></div>
+            <div class="chart-body" id="chartHoursCx"></div>
+          </article>
+          <article class="dashboard-card">
+            <div class="dashboard-card-header"><div><h3>Horas por cliente</h3><p>Carga horária dedicada a cada cliente</p></div></div>
+            <div class="chart-body" id="chartHoursClient"></div>
+          </article>
         </section>
 
         <section class="dashboard-card">
@@ -994,6 +1098,7 @@
               <thead>
                 <tr>
                   <th>Data</th>
+                  <th>Duração</th>
                   <th>Cliente</th>
                   <th>Módulo</th>
                   <th>Tipo</th>
@@ -1017,7 +1122,7 @@
     <tr>
       <td><span class="row-number"></span></td>
       <td><input type="date" data-field="date" aria-label="Data"></td>
-      <td><input type="time" data-field="duration" aria-label="Duração"></td>
+      <td><input type="text" data-field="duration" inputmode="numeric" placeholder="Ex.: 01:30" aria-label="Duração em horas e minutos"></td>
       <td><input type="text" data-field="client" placeholder="Nome do cliente" aria-label="Cliente"></td>
       <td>
         <select data-field="module" aria-label="Módulos">
@@ -1080,6 +1185,30 @@
     </tr>
   </template>
 
+  <div class="month-picker" id="monthPicker" aria-hidden="true">
+    <div class="month-picker-card" role="dialog" aria-modal="true" aria-label="Selecionar mês">
+      <div class="month-picker-head">
+        <button class="btn btn-icon" id="monthPickerPrevYear" type="button">‹</button>
+        <strong id="monthPickerYear"></strong>
+        <button class="btn btn-icon" id="monthPickerNextYear" type="button">›</button>
+      </div>
+      <div class="month-grid" id="monthPickerGrid"></div>
+    </div>
+  </div>
+
+  <div class="dialog-overlay" id="customModuleDialog" aria-hidden="true">
+    <div class="dialog-card" role="dialog" aria-modal="true" aria-label="Selecionar módulos customizados">
+      <div class="dialog-head"><strong>Módulos do treinamento</strong></div>
+      <p>Selecione todos os módulos abordados. É possível marcar mais de uma opção.</p>
+      <div class="custom-module-list" id="customModuleList"></div>
+      <input class="other-module" id="otherCustomModule" type="text" placeholder="Outro módulo (opcional)">
+      <div class="dialog-actions">
+        <button class="btn" id="cancelCustomModules" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="saveCustomModules" type="button">Confirmar módulos</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     (() => {
       const STORAGE_KEY = "olos.trainingControl.v1";
@@ -1091,6 +1220,12 @@
       const toast = document.querySelector("#toast");
       const totalTrainings = document.querySelector("#totalTrainings");
       const totalClients = document.querySelector("#totalClients");
+      const monthPicker = document.querySelector("#monthPicker");
+      const monthPickerYear = document.querySelector("#monthPickerYear");
+      const monthPickerGrid = document.querySelector("#monthPickerGrid");
+      const customModuleDialog = document.querySelector("#customModuleDialog");
+      const customModuleList = document.querySelector("#customModuleList");
+      const otherCustomModule = document.querySelector("#otherCustomModule");
       const dashboardEls = {
         filterScope: document.querySelector("#filterScope"),
         filterMonth: document.querySelector("#filterMonth"),
@@ -1101,6 +1236,7 @@
         filterType: document.querySelector("#filterType"),
         filterModule: document.querySelector("#filterModule"),
         kpiTotalTrainings: document.querySelector("#kpiTotalTrainings"),
+        kpiTotalHours: document.querySelector("#kpiTotalHours"),
         kpiTotalClients: document.querySelector("#kpiTotalClients"),
         kpiTotalCx: document.querySelector("#kpiTotalCx"),
         kpiAvgCx: document.querySelector("#kpiAvgCx"),
@@ -1118,7 +1254,9 @@
           clients: document.querySelector("#chartClients"),
           requesters: document.querySelector("#chartRequesters"),
           modules: document.querySelector("#chartModules"),
-          location: document.querySelector("#chartLocation")
+          location: document.querySelector("#chartLocation"),
+          hoursCx: document.querySelector("#chartHoursCx"),
+          hoursClient: document.querySelector("#chartHoursClient")
         }
       };
       const monthNames = [
@@ -1126,6 +1264,11 @@
         "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
       ];
       const chartColors = ["#08094d", "#ff5a2a", "#4f5be8", "#137a55", "#9c5cff", "#f0a600", "#18a1b8"];
+      const moduleOptions = [
+        "Olos Monitor", "Configuração", "Mailing & Estratégia", "Estratégia",
+        "Estratégia Automatizada", "Relatórios", "Gravações", "Todos os Módulos",
+        "Módulos p/ Supervisão", "Módulos p/ Monitoria"
+      ];
       const fields = [
         "date", "duration", "client", "module", "type", "requester", "location",
         "participantsDirectory", "evaluationDirectory", "survey", "cxResource", "notes"
@@ -1135,6 +1278,8 @@
       let selectedMonth = startOfMonth(new Date());
       let records = loadRecords();
       let saveTimer;
+      let pickerYear = selectedMonth.getFullYear();
+      let customModuleRecordId = null;
 
       function startOfMonth(date) {
         return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -1154,7 +1299,13 @@
       function loadRecords() {
         try {
           const savedRecords = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-          return savedRecords.map(record => ({ locked: false, ...record }));
+          return savedRecords.map(record => ({
+            locked: false,
+            customModules: [],
+            dates: record.date ? [record.date] : [],
+            ...record,
+            dates: Array.isArray(record.dates) && record.dates.length ? record.dates : (record.date ? [record.date] : [])
+          }));
         } catch {
           return [];
         }
@@ -1173,9 +1324,17 @@
         return record.date ? record.date.slice(0, 7) : record.month;
       }
 
+      function recordDates(record) {
+        return [...new Set([...(record.dates || []), record.date].filter(Boolean))].sort();
+      }
+
+      function recordHasMonth(record, key) {
+        return recordDates(record).some(date => date.slice(0, 7) === key) || recordMonth(record) === key;
+      }
+
       function currentRecords() {
         const key = monthKey(selectedMonth);
-        return records.filter(record => recordMonth(record) === key);
+        return records.filter(record => recordHasMonth(record, key));
       }
 
       function makeRecord() {
@@ -1196,6 +1355,8 @@
           survey: "",
           cxResource: "",
           notes: "",
+          customModules: [],
+          dates: [localDate(isCurrentMonth ? now : selectedMonth)],
           locked: false
         };
       }
@@ -1204,6 +1365,7 @@
         detailFields.forEach(field => {
           record[field] = "";
         });
+        record.customModules = [];
       }
 
       function render() {
@@ -1225,12 +1387,23 @@
             fields.forEach(field => {
               const control = row.querySelector(`[data-field="${field}"]`);
               control.value = record[field] || "";
+              if (field === "module" && record.module === "Módulo Customizado Cliente" && record.customModules?.length) {
+                const selectedOption = control.options[control.selectedIndex];
+                selectedOption.textContent = `Customizado: ${record.customModules.join(", ")}`;
+                control.title = record.customModules.join(", ");
+              }
               control.disabled = Boolean(record.locked);
               if (field === "date") {
                 control.addEventListener("change", event => updateRecord(record.id, field, event.target.value));
               } else {
                 control.addEventListener("input", event => updateRecord(record.id, field, event.target.value));
                 control.addEventListener("change", event => updateRecord(record.id, field, event.target.value));
+              }
+              if (field === "duration") {
+                control.addEventListener("blur", event => {
+                  const normalized = normalizeDuration(event.target.value);
+                  if (normalized !== event.target.value) updateRecord(record.id, field, normalized);
+                });
               }
             });
 
@@ -1258,11 +1431,16 @@
         let shouldRender = false;
         const previousValue = record[field] || "";
         record[field] = value;
+        if (field === "module") {
+          if (value === "Módulo Customizado Cliente") openCustomModuleDialog(record.id);
+          else record.customModules = [];
+        }
         if (field === "date") {
           if (previousValue !== value) {
             clearRecordDetails(record);
           }
           if (value) {
+            record.dates = [value];
             record.month = value.slice(0, 7);
             const [year, month] = record.month.split("-").map(Number);
             const changedToAnotherMonth = record.month !== monthKey(selectedMonth);
@@ -1284,10 +1462,54 @@
       function lockRecord(id) {
         const record = records.find(item => item.id === id);
         if (!record) return;
+        record.duration = normalizeDuration(record.duration);
+        if (record.duration && !durationToMinutes(record.duration)) {
+          showToast("Informe a duração como HH:MM (ex.: 01:30) ou em horas (ex.: 1,5).");
+          return;
+        }
+        if (record.module === "Módulo Customizado Cliente" && !record.customModules?.length) {
+          showToast("Informe ao menos um módulo customizado antes de salvar.");
+          openCustomModuleDialog(record.id);
+          return;
+        }
+        const sameClient = records.find(item => item.id !== id &&
+          fieldValue(item, "client").toLocaleLowerCase("pt-BR") === fieldValue(record, "client").toLocaleLowerCase("pt-BR") &&
+          fieldValue(record, "client") && !recordDates(item).includes(record.date));
+        if (sameClient && window.confirm(`Já existe um treinamento para ${record.client} em outra data. Deseja mesclar os registros como um único treinamento realizado em vários dias?`)) {
+          mergeRecords(sameClient, record);
+          return;
+        }
         record.locked = true;
         persist();
         render();
         showToast("Treinamento salvo e bloqueado para edição.");
+      }
+
+      function mergeRecords(target, source) {
+        target.dates = [...new Set([...recordDates(target), ...recordDates(source)])].sort();
+        target.date = target.dates[0];
+        target.month = target.date.slice(0, 7);
+        target.duration = minutesToDuration(durationToMinutes(target.duration) + durationToMinutes(source.duration));
+        fields.filter(field => !["date", "duration", "notes", "module"].includes(field)).forEach(field => {
+          if (!target[field] && source[field]) target[field] = source[field];
+        });
+        if (source.notes && source.notes !== target.notes) {
+          target.notes = [target.notes, source.notes].filter(Boolean).join(" | ");
+        }
+        if (target.module && source.module && target.module !== source.module &&
+            target.module !== "Módulo Customizado Cliente" && source.module !== "Módulo Customizado Cliente") {
+          target.customModules = [...new Set([target.module, source.module])];
+          target.module = "Módulo Customizado Cliente";
+        } else if (target.module === "Módulo Customizado Cliente" || source.module === "Módulo Customizado Cliente") {
+          target.module = "Módulo Customizado Cliente";
+          target.customModules = [...new Set([...(target.customModules || []), ...(source.customModules || [])])];
+        }
+        target.locked = true;
+        records = records.filter(item => item.id !== source.id);
+        selectedMonth = startOfMonth(new Date(`${source.date}T12:00:00`));
+        persist();
+        render();
+        showToast("Treinamentos mesclados e salvos.");
       }
 
       function unlockRecord(id) {
@@ -1313,7 +1535,7 @@
       function updateStats(monthRecords) {
         totalTrainings.textContent = monthRecords.length;
         const clients = new Set(
-          monthRecords.map(record => record.client.trim().toLocaleLowerCase("pt-BR")).filter(Boolean)
+          monthRecords.map(record => fieldValue(record, "client").toLocaleLowerCase("pt-BR")).filter(Boolean)
         );
         totalClients.textContent = clients.size;
       }
@@ -1327,11 +1549,71 @@
           .replaceAll("'", "&#039;");
       }
 
+      function durationToMinutes(value) {
+        const text = String(value || "").trim().replace(",", ".");
+        if (!text) return 0;
+        if (/^\d+(?:\.\d+)?$/.test(text)) return Math.round(Number(text) * 60);
+        const match = text.match(/^(\d{1,3}):([0-5]\d)$/);
+        return match ? Number(match[1]) * 60 + Number(match[2]) : 0;
+      }
+
+      function minutesToDuration(minutes) {
+        const safe = Math.max(0, Math.round(Number(minutes) || 0));
+        return `${String(Math.floor(safe / 60)).padStart(2, "0")}:${String(safe % 60).padStart(2, "0")}`;
+      }
+
+      function normalizeDuration(value) {
+        if (!String(value || "").trim()) return "";
+        const minutes = durationToMinutes(value);
+        return minutes ? minutesToDuration(minutes) : String(value).trim();
+      }
+
+      function moduleLabels(record) {
+        return record.module === "Módulo Customizado Cliente" && record.customModules?.length
+          ? record.customModules
+          : [fieldValue(record, "module") || "Não informado"];
+      }
+
+      function openCustomModuleDialog(id) {
+        const record = records.find(item => item.id === id);
+        if (!record) return;
+        customModuleRecordId = id;
+        const selected = new Set(record.customModules || []);
+        customModuleList.innerHTML = moduleOptions.map(module => `
+          <label><input type="checkbox" value="${escapeHtml(module)}" ${selected.has(module) ? "checked" : ""}> ${escapeHtml(module)}</label>
+        `).join("");
+        otherCustomModule.value = "";
+        customModuleDialog.classList.add("open");
+        customModuleDialog.setAttribute("aria-hidden", "false");
+      }
+
+      function closeCustomModuleDialog() {
+        customModuleDialog.classList.remove("open");
+        customModuleDialog.setAttribute("aria-hidden", "true");
+        customModuleRecordId = null;
+      }
+
+      function saveCustomModules() {
+        const record = records.find(item => item.id === customModuleRecordId);
+        if (!record) return closeCustomModuleDialog();
+        const selected = [...customModuleList.querySelectorAll("input:checked")].map(input => input.value);
+        if (otherCustomModule.value.trim()) selected.push(otherCustomModule.value.trim());
+        record.customModules = [...new Set(selected)];
+        if (!record.customModules.length) return showToast("Selecione ao menos um módulo.");
+        persist();
+        closeCustomModuleDialog();
+        render();
+      }
+
       function fieldValue(record, field) {
         return String(record[field] || "").trim();
       }
 
       function uniqueValues(field) {
+        if (field === "module") {
+          return [...new Set(records.flatMap(moduleLabels).filter(value => value !== "Não informado"))]
+            .sort((a, b) => a.localeCompare(b, "pt-BR"));
+        }
         return [...new Set(records.map(record => fieldValue(record, field)).filter(Boolean))]
           .sort((a, b) => a.localeCompare(b, "pt-BR"));
       }
@@ -1350,7 +1632,7 @@
         const currentYear = selectedMonth.getFullYear();
         const years = [...new Set([
           currentYear,
-          ...records.map(record => Number((recordMonth(record) || "").slice(0, 4))).filter(Boolean)
+          ...records.flatMap(record => recordDates(record).map(date => Number(date.slice(0, 4)))).filter(Boolean)
         ])].sort((a, b) => b - a);
 
         const selectedFilterMonth = dashboardEls.filterMonth.options.length
@@ -1391,11 +1673,11 @@
 
       function filteredDashboardRecords(filters = dashboardFilters()) {
         return records.filter(record => {
-          const key = recordMonth(record) || "";
-          const [year, month] = key.split("-");
           const monthMatches = filters.scope === "all" || (
-            (!filters.month || month === filters.month) &&
-            (!filters.year || year === filters.year)
+            recordDates(record).some(date => {
+              const [year, month] = date.slice(0, 7).split("-");
+              return (!filters.month || month === filters.month) && (!filters.year || year === filters.year);
+            })
           );
 
           return monthMatches &&
@@ -1403,11 +1685,17 @@
             (!filters.cxResource || fieldValue(record, "cxResource") === filters.cxResource) &&
             (!filters.requester || fieldValue(record, "requester") === filters.requester) &&
             (!filters.type || fieldValue(record, "type") === filters.type) &&
-            (!filters.module || fieldValue(record, "module") === filters.module);
+            (!filters.module || moduleLabels(record).includes(filters.module));
         });
       }
 
       function countBy(items, field) {
+        if (field === "module") {
+          return items.reduce((acc, record) => {
+            moduleLabels(record).forEach(label => { acc[label] = (acc[label] || 0) + 1; });
+            return acc;
+          }, {});
+        }
         return items.reduce((acc, record) => {
           const label = fieldValue(record, field) || "Não informado";
           acc[label] = (acc[label] || 0) + 1;
@@ -1439,11 +1727,23 @@
         return `${day}/${month}/${year}`;
       }
 
+      function formatRecordDates(record) {
+        return recordDates(record).map(formatDate).join(", ") || "-";
+      }
+
+      function sumHoursBy(items, field) {
+        return items.reduce((acc, record) => {
+          const label = fieldValue(record, field) || "Não informado";
+          acc[label] = (acc[label] || 0) + durationToMinutes(record.duration) / 60;
+          return acc;
+        }, {});
+      }
+
       function renderEmpty(container, message = "Sem dados para exibir neste filtro.") {
         container.innerHTML = `<div class="empty-chart">${message}</div>`;
       }
 
-      function renderBarChart(container, entries, limit = 8) {
+      function renderBarChart(container, entries, limit = 8, valueFormatter = value => value) {
         const data = entries.slice(0, limit);
         if (!data.length) return renderEmpty(container);
         const max = Math.max(...data.map(([, value]) => value), 1);
@@ -1451,7 +1751,7 @@
           <div class="bar-row" title="${escapeHtml(label)}">
             <span class="bar-label">${escapeHtml(label)}</span>
             <span class="bar-track"><span class="bar-fill" style="width:${Math.max(5, (value / max) * 100)}%"></span></span>
-            <span class="bar-value">${value}</span>
+            <span class="bar-value">${valueFormatter(value)}</span>
           </div>
         `).join("")}</div>`;
       }
@@ -1544,6 +1844,7 @@
         const cxCount = uniqueCount(data, "cxResource");
 
         dashboardEls.kpiTotalTrainings.textContent = data.length;
+        dashboardEls.kpiTotalHours.textContent = `${formatNumber(data.reduce((sum, record) => sum + durationToMinutes(record.duration) / 60, 0))} h`;
         dashboardEls.kpiTotalClients.textContent = uniqueCount(data, "client");
         dashboardEls.kpiTotalCx.textContent = cxCount;
         dashboardEls.kpiAvgCx.textContent = formatNumber(cxCount ? data.length / cxCount : 0);
@@ -1590,8 +1891,8 @@
           ? data
           : filteredDashboardRecords({ ...filters, month: "" });
         const monthCounts = evolutionBase.reduce((acc, record) => {
-          const key = recordMonth(record);
-          if (key) acc[key] = (acc[key] || 0) + 1;
+          const keys = [...new Set(recordDates(record).map(date => date.slice(0, 7)))];
+          keys.forEach(key => { if (key) acc[key] = (acc[key] || 0) + 1; });
           return acc;
         }, {});
         const monthEntries = sortedEntries(monthCounts, 999)
@@ -1603,12 +1904,15 @@
         renderBarChart(dashboardEls.charts.requesters, sortedEntries(countBy(data, "requester"), 10));
         renderColumnChart(dashboardEls.charts.modules, sortedEntries(countBy(data, "module"), 10));
         renderDonutChart(dashboardEls.charts.location, sortedEntries(countBy(data, "location"), 7));
+        renderBarChart(dashboardEls.charts.hoursCx, sortedEntries(sumHoursBy(data, "cxResource"), 10), 10, value => `${formatNumber(value)} h`);
+        renderBarChart(dashboardEls.charts.hoursClient, sortedEntries(sumHoursBy(data, "client"), 10), 10, value => `${formatNumber(value)} h`);
 
         dashboardEls.details.innerHTML = data.length ? data.map(record => `
           <tr>
-            <td>${formatDate(record.date)}</td>
+            <td>${formatRecordDates(record)}</td>
+            <td>${escapeHtml(record.duration || "-")}</td>
             <td>${escapeHtml(record.client || "-")}</td>
-            <td>${escapeHtml(record.module || "-")}</td>
+            <td>${escapeHtml(moduleLabels(record).join(", ") || "-")}</td>
             <td>${escapeHtml(record.type || "-")}</td>
             <td>${escapeHtml(record.requester || "-")}</td>
             <td>${escapeHtml(record.location || "-")}</td>
@@ -1616,7 +1920,7 @@
             <td>${escapeHtml(record.notes || "-")}</td>
           </tr>
         `).join("") : `
-          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:28px;">Sem treinamentos para os filtros selecionados.</td></tr>
+          <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:28px;">Sem treinamentos para os filtros selecionados.</td></tr>
         `;
       }
 
@@ -1637,6 +1941,139 @@
         });
       }
 
+      function renderMonthPicker() {
+        monthPickerYear.textContent = pickerYear;
+        monthPickerGrid.innerHTML = monthNames.map((name, index) => {
+          const active = pickerYear === selectedMonth.getFullYear() && index === selectedMonth.getMonth();
+          return `<button class="month-option ${active ? "active" : ""}" type="button" data-month="${index}">${name}</button>`;
+        }).join("");
+        monthPickerGrid.querySelectorAll("[data-month]").forEach(button => {
+          button.addEventListener("click", () => {
+            selectedMonth = new Date(pickerYear, Number(button.dataset.month), 1);
+            closeMonthPicker();
+            render();
+          });
+        });
+      }
+
+      function openMonthPicker() {
+        pickerYear = selectedMonth.getFullYear();
+        renderMonthPicker();
+        monthPicker.classList.add("open");
+        monthPicker.setAttribute("aria-hidden", "false");
+      }
+
+      function closeMonthPicker() {
+        monthPicker.classList.remove("open");
+        monthPicker.setAttribute("aria-hidden", "true");
+      }
+
+      const importHeaders = [
+        "Data", "Datas adicionais", "Duração", "Cliente", "Módulos", "Módulos customizados",
+        "Tipo", "Solicitação", "Local", "Diretório - Lista de Participantes",
+        "Diretório - Avaliação", "Envio da Pesquisa de Satisfação", "Recurso CX", "Observação"
+      ];
+
+      function downloadCsv(filename, rows) {
+        const csv = "\uFEFF" + rows.map(row => row.map(csvCell).join(";")).join("\r\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function downloadImportTemplate() {
+        downloadCsv("modelo-importacao-treinamentos.csv", [
+          importHeaders,
+          ["15/01/2026", "16/01/2026|17/01/2026", "02:30", "Cliente Exemplo", "Módulo Customizado Cliente", "Olos Monitor|Relatórios", "Completo", "Nome do solicitante", "Remoto", "", "", "Sim", "Nome do analista", "Exemplo — apague esta linha antes de importar"]
+        ]);
+        showToast("Modelo de importação gerado.");
+      }
+
+      function parseCsv(text) {
+        const clean = text.replace(/^\uFEFF/, "");
+        const firstLine = clean.split(/\r?\n/, 1)[0] || "";
+        const delimiter = (firstLine.match(/;/g) || []).length >= (firstLine.match(/,/g) || []).length ? ";" : ",";
+        const rows = [];
+        let row = [], cell = "", quoted = false;
+        for (let index = 0; index < clean.length; index++) {
+          const char = clean[index];
+          if (char === '"') {
+            if (quoted && clean[index + 1] === '"') { cell += '"'; index++; }
+            else quoted = !quoted;
+          } else if (char === delimiter && !quoted) {
+            row.push(cell); cell = "";
+          } else if ((char === "\n" || char === "\r") && !quoted) {
+            if (char === "\r" && clean[index + 1] === "\n") index++;
+            row.push(cell); cell = "";
+            if (row.some(value => value.trim())) rows.push(row);
+            row = [];
+          } else cell += char;
+        }
+        row.push(cell);
+        if (row.some(value => value.trim())) rows.push(row);
+        return rows;
+      }
+
+      function normalizeHeader(value) {
+        return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      }
+
+      function normalizeImportedDate(value) {
+        const text = String(value || "").trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+        const match = text.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+        return match ? `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}` : "";
+      }
+
+      function importHistoricalFile(file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const rows = parseCsv(String(reader.result || ""));
+            if (rows.length < 2) throw new Error("Arquivo sem registros.");
+            const headers = rows[0].map(normalizeHeader);
+            const indexOf = (...names) => headers.findIndex(header => names.includes(header));
+            const indexes = {
+              date: indexOf("data"), dates: indexOf("datas adicionais"), duration: indexOf("duracao"),
+              client: indexOf("cliente"), module: indexOf("modulos", "modulo"), customModules: indexOf("modulos customizados"),
+              type: indexOf("tipo"), requester: indexOf("solicitacao", "solicitante"), location: indexOf("local"),
+              participantsDirectory: indexOf("diretorio lista de participantes"), evaluationDirectory: indexOf("diretorio avaliacao"),
+              survey: indexOf("envio da pesquisa de satisfacao"), cxResource: indexOf("recurso cx"), notes: indexOf("observacao")
+            };
+            if (indexes.date < 0) throw new Error("A coluna Data é obrigatória.");
+            let imported = 0, ignored = 0;
+            rows.slice(1).forEach(values => {
+              const get = field => indexes[field] >= 0 ? String(values[indexes[field]] || "").trim() : "";
+              const date = normalizeImportedDate(get("date"));
+              if (!date) { ignored++; return; }
+              const additionalDates = get("dates").split(/[|,]/).map(normalizeImportedDate).filter(Boolean);
+              const customModules = get("customModules").split(/[|,]/).map(value => value.trim()).filter(Boolean);
+              records.push({
+                id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+                month: date.slice(0, 7), date, dates: [...new Set([date, ...additionalDates])].sort(),
+                duration: normalizeDuration(get("duration")), client: get("client"), module: get("module") || (customModules.length ? "Módulo Customizado Cliente" : ""), customModules,
+                type: get("type"), requester: get("requester"), location: get("location"),
+                participantsDirectory: get("participantsDirectory"), evaluationDirectory: get("evaluationDirectory"),
+                survey: get("survey"), cxResource: get("cxResource"), notes: get("notes"), locked: true
+              });
+              imported++;
+            });
+            if (!imported) throw new Error("Nenhuma linha com data válida foi encontrada.");
+            persist();
+            render();
+            showToast(`${imported} registro(s) importado(s)${ignored ? `; ${ignored} ignorado(s)` : ""}.`);
+          } catch (error) {
+            showToast(error.message || "Não foi possível importar o arquivo.");
+          }
+        };
+        reader.readAsText(file, "UTF-8");
+      }
+
       function csvCell(value) {
         return `"${String(value || "").replaceAll('"', '""')}"`;
       }
@@ -1649,23 +2086,16 @@
         }
 
         const headers = [
-          "Item", "Data", "Duração", "Cliente", "Módulos", "Tipo", "Solicitação", "Local",
+          "Item", "Data", "Datas adicionais", "Duração", "Cliente", "Módulos", "Módulos customizados", "Tipo", "Solicitação", "Local",
           "Diretório - Lista de Participantes", "Diretório - Avaliação",
           "Envio da Pesquisa de Satisfação", "Recurso CX", "Observação"
         ];
         const rows = monthRecords.map((record, index) => [
-          index + 1, record.date, record.duration, record.client, record.module, record.type,
+          index + 1, record.date, recordDates(record).filter(date => date !== record.date).join("|"), record.duration, record.client, record.module, (record.customModules || []).join("|"), record.type,
           record.requester, record.location, record.participantsDirectory, record.evaluationDirectory,
           record.survey, record.cxResource, record.notes
         ]);
-        const csv = "\uFEFF" + [headers, ...rows].map(row => row.map(csvCell).join(";")).join("\r\n");
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `treinamentos-${monthKey(selectedMonth)}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
+        downloadCsv(`treinamentos-${monthKey(selectedMonth)}.csv`, [headers, ...rows]);
         showToast("Arquivo CSV gerado.");
       }
 
@@ -1678,11 +2108,24 @@
 
       document.querySelector("#prevMonth").addEventListener("click", () => moveMonth(-1));
       document.querySelector("#nextMonth").addEventListener("click", () => moveMonth(1));
+      monthLabel.addEventListener("click", openMonthPicker);
+      document.querySelector("#monthPickerPrevYear").addEventListener("click", () => { pickerYear--; renderMonthPicker(); });
+      document.querySelector("#monthPickerNextYear").addEventListener("click", () => { pickerYear++; renderMonthPicker(); });
+      monthPicker.addEventListener("click", event => { if (event.target === monthPicker) closeMonthPicker(); });
       document.querySelector("#todayMonth").addEventListener("click", () => {
         selectedMonth = startOfMonth(new Date());
         render();
       });
       document.querySelector("#addRow").addEventListener("click", addRow);
+      document.querySelector("#importCsv").addEventListener("click", () => document.querySelector("#importFile").click());
+      document.querySelector("#downloadTemplate").addEventListener("click", downloadImportTemplate);
+      document.querySelector("#importFile").addEventListener("change", event => {
+        const file = event.target.files?.[0];
+        if (file) importHistoricalFile(file);
+        event.target.value = "";
+      });
+      document.querySelector("#cancelCustomModules").addEventListener("click", closeCustomModuleDialog);
+      document.querySelector("#saveCustomModules").addEventListener("click", saveCustomModules);
       document.querySelector("#exportCsv").addEventListener("click", exportCsv);
       document.querySelector("#printPage").addEventListener("click", () => window.print());
       document.querySelectorAll(".tab-btn").forEach(button => {

@@ -1,16 +1,43 @@
 # Controle de Treinamentos
 
-Painel mensal em HTML para registrar treinamentos realizados pelo time.
+Painel em HTML para registrar, consolidar e analisar os treinamentos realizados pelo time de CX.
 
 ## Como usar
 
 Abra `index.html` em um navegador moderno. O painel permite:
 
-- navegar entre os meses;
-- adicionar, editar e excluir treinamentos diretamente na tabela;
-- usar listas de seleção para Tipo, Módulos, Local e Pesquisa de Satisfação;
-- acompanhar os totais mensais de treinamentos e clientes;
+- escolher diretamente qualquer mês do ano;
+- adicionar, editar, salvar e bloquear treinamentos;
+- digitar a duração em `HH:MM` ou em horas decimais;
+- informar múltiplos módulos quando o treinamento for customizado;
+- mesclar, mediante confirmação, treinamentos do mesmo cliente realizados em dias diferentes;
+- importar registros históricos em massa por CSV;
+- baixar o modelo oficial de importação;
 - exportar os dados do mês para CSV;
+- acompanhar treinamentos e horas por Recurso CX e por cliente no dashboard;
 - imprimir a visão mensal.
 
-Os registros são salvos automaticamente no armazenamento local do navegador (`localStorage`). Para compartilhar os dados com outra pessoa ou computador, use **Exportar CSV**.
+Os registros são mantidos no armazenamento local do navegador (`localStorage`). Para compartilhar ou guardar uma cópia, use **Exportar CSV**.
+
+## Layout da importação histórica
+
+Use o arquivo [`docs/Layout_Importacao_Historico.csv`](docs/Layout_Importacao_Historico.csv) ou clique em **Baixar modelo** no painel.
+
+Campos aceitos:
+
+1. Data — obrigatória, em `DD/MM/AAAA` ou `AAAA-MM-DD`.
+2. Datas adicionais — se houver, separadas por `|`.
+3. Duração — exemplo: `02:30` ou `2,5`.
+4. Cliente.
+5. Módulos.
+6. Módulos customizados — múltiplos valores separados por `|`.
+7. Tipo.
+8. Solicitação.
+9. Local.
+10. Diretório - Lista de Participantes.
+11. Diretório - Avaliação.
+12. Envio da Pesquisa de Satisfação.
+13. Recurso CX.
+14. Observação.
+
+Os registros importados entram salvos e bloqueados para edição.
