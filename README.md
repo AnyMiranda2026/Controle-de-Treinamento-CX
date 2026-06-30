@@ -11,11 +11,10 @@ Abra `index.html` em um navegador moderno. O painel permite:
 - digitar a duração em `HH:MM` ou em horas decimais;
 - informar múltiplos módulos quando o treinamento for customizado;
 - mesclar, mediante confirmação, treinamentos do mesmo cliente realizados em dias diferentes;
-- importar registros históricos em massa por CSV;
+- importar registros históricos em massa por Excel (`.xlsx`/`.xls`) ou CSV;
 - baixar o modelo oficial de importação;
 - exportar os dados do mês para CSV;
 - acompanhar treinamentos e horas por Recurso CX e por cliente no dashboard;
-- imprimir a visão mensal.
 
 Os registros são sincronizados pelo Firebase/Firestore e ficam disponíveis para todas as pessoas que acessam o mesmo link. O navegador também mantém uma cópia local para preservar o trabalho em caso de falha temporária de conexão.
 
@@ -23,7 +22,7 @@ Na primeira abertura da versão sincronizada, os dados históricos existentes ne
 
 ## Layout da importação histórica
 
-Use o arquivo [`docs/Layout_Importacao_Historico_v2.csv`](docs/Layout_Importacao_Historico_v2.csv) ou clique em **Baixar modelo** no painel.
+Use o arquivo [`docs/Modelo_Importacao_Historico_Treinamentos.xlsx`](docs/Modelo_Importacao_Historico_Treinamentos.xlsx) ou clique em **Baixar modelo** no painel. A aba **Importacao** é a única lida pelo sistema; as abas **Listas** e **Instrucoes** servem como apoio ao preenchimento.
 
 Campos aceitos:
 
@@ -31,7 +30,7 @@ Campos aceitos:
 2. Datas adicionais — se houver, separadas por `|`.
 3. Duração — exemplo: `02:30` ou `2,5`.
 4. Cliente.
-5. Módulos.
+5. Módulo.
 6. Módulos customizados — múltiplos valores separados por `|`.
 7. Tipo.
 8. Solicitação.

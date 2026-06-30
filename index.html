@@ -990,7 +990,7 @@
         <button class="btn" id="importCsv">↑ Importar histórico</button>
         <button class="btn" id="downloadTemplate">Baixar modelo</button>
         <button class="btn btn-secondary" id="exportCsv">↓ Exportar CSV</button>
-        <input type="file" id="importFile" accept=".csv,text/csv" hidden>
+        <input type="file" id="importFile" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden>
       </div>
     </section>
 
@@ -1279,6 +1279,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
@@ -1378,6 +1379,7 @@
       let pendingCloudRecords = null;
       let pickerYear = selectedMonth.getFullYear();
       let customModuleRecordId = null;
+      let customModuleDate = null;
       let additionalDatesRecordId = null;
       let pendingAdditionalDates = [];
       const expandedMergedRows = new Set();
@@ -1403,6 +1405,7 @@
           return savedRecords.map(record => ({
             locked: false,
             customModules: [],
+            dateDetails: {},
             projectLink: record.projectLink || record.participantsDirectory || record.evaluationDirectory || "",
             dates: record.date ? [record.date] : [],
             ...record,
@@ -1528,6 +1531,7 @@
               return {
                 locked: false,
                 customModules: [],
+                dateDetails: {},
                 dates: [],
                 ...data,
                 projectLink: data.projectLink || data.participantsDirectory || data.evaluationDirectory || "",
@@ -1592,6 +1596,7 @@
           cxResource: "",
           notes: "",
           customModules: [],
+          dateDetails: {},
           dates: [],
           locked: false
         };
@@ -1667,7 +1672,8 @@
             body.appendChild(row);
 
             if (dates.length > 1 && expandedMergedRows.has(record.id)) {
-              dates.forEach((date, subIndex) => {
+              dates.filter(date => date !== record.date).forEach((date, subIndex) => {
+                const detail = record.dateDetails?.[date] || {};
                 const subrow = document.createElement("tr");
                 const safeLink = safeProjectUrl(record.projectLink);
                 subrow.className = "merged-subrow";
@@ -1676,7 +1682,7 @@
                   <td class="subitem-date">${formatDate(date)}</td>
                   <td>-</td>
                   <td>${escapeHtml(record.client || "-")}</td>
-                  <td>${escapeHtml(moduleLabels(record).join(", ") || "-")}</td>
+                  <td class="subitem-module-cell"></td>
                   <td>${escapeHtml(record.type || "-")}</td>
                   <td>${escapeHtml(record.requester || "-")}</td>
                   <td>${escapeHtml(record.location || "-")}</td>
@@ -1685,6 +1691,17 @@
                   <td>${escapeHtml(record.cxResource || "-")}</td>
                   <td class="subitem-note">Data vinculada ao mesmo treinamento</td>
                   <td></td>`;
+                const moduleSelect = template.content.querySelector('[data-field="module"]').cloneNode(true);
+                moduleSelect.removeAttribute("data-field");
+                moduleSelect.setAttribute("aria-label", `Módulo do subitem ${index + 1}.${subIndex + 1}`);
+                moduleSelect.value = detail.module || record.module || "";
+                moduleSelect.disabled = Boolean(record.locked);
+                if (moduleSelect.value === "Módulo Customizado Cliente" && detail.customModules?.length) {
+                  moduleSelect.options[moduleSelect.selectedIndex].textContent = `Customizado: ${detail.customModules.join(", ")}`;
+                  moduleSelect.title = detail.customModules.join(", ");
+                }
+                moduleSelect.addEventListener("change", event => updateSubitemModule(record.id, date, event.target.value));
+                subrow.querySelector(".subitem-module-cell").appendChild(moduleSelect);
                 body.appendChild(subrow);
               });
             }
@@ -1763,8 +1780,20 @@
       }
 
       function mergeRecords(target, source) {
+        target.dateDetails ||= {};
+        recordDates(source).forEach(date => {
+          if (date === target.date) return;
+          const sourceDetail = source.dateDetails?.[date] || {};
+          const detailModule = sourceDetail.module || source.module || "";
+          target.dateDetails[date] = {
+            ...sourceDetail,
+            module: detailModule,
+            customModules: detailModule === "Módulo Customizado Cliente"
+              ? (sourceDetail.customModules?.length ? sourceDetail.customModules : (source.customModules || []))
+              : []
+          };
+        });
         target.dates = [...new Set([...recordDates(target), ...recordDates(source)])].sort();
-        target.date = target.dates[0];
         target.month = target.date.slice(0, 7);
         target.duration = minutesToDuration(durationToMinutes(target.duration) + durationToMinutes(source.duration));
         fields.filter(field => !["date", "duration", "notes", "module"].includes(field)).forEach(field => {
@@ -1772,14 +1801,6 @@
         });
         if (source.notes && source.notes !== target.notes) {
           target.notes = [target.notes, source.notes].filter(Boolean).join(" | ");
-        }
-        if (target.module && source.module && target.module !== source.module &&
-            target.module !== "Módulo Customizado Cliente" && source.module !== "Módulo Customizado Cliente") {
-          target.customModules = [...new Set([target.module, source.module])];
-          target.module = "Módulo Customizado Cliente";
-        } else if (target.module === "Módulo Customizado Cliente" || source.module === "Módulo Customizado Cliente") {
-          target.module = "Módulo Customizado Cliente";
-          target.customModules = [...new Set([...(target.customModules || []), ...(source.customModules || [])])];
         }
         target.locked = true;
         records = records.filter(item => item.id !== source.id);
@@ -1857,16 +1878,26 @@
       }
 
       function moduleLabels(record) {
-        return record.module === "Módulo Customizado Cliente" && record.customModules?.length
-          ? record.customModules
+        const labels = record.module === "Módulo Customizado Cliente" && record.customModules?.length
+          ? [...record.customModules]
           : [fieldValue(record, "module") || "Não informado"];
+        Object.values(record.dateDetails || {}).forEach(detail => {
+          if (detail.module === "Módulo Customizado Cliente" && detail.customModules?.length) {
+            labels.push(...detail.customModules);
+          } else if (detail.module) {
+            labels.push(detail.module);
+          }
+        });
+        return [...new Set(labels)];
       }
 
-      function openCustomModuleDialog(id) {
+      function openCustomModuleDialog(id, date = null) {
         const record = records.find(item => item.id === id);
         if (!record) return;
         customModuleRecordId = id;
-        const selected = new Set(record.customModules || []);
+        customModuleDate = date;
+        const selectedModules = date ? record.dateDetails?.[date]?.customModules : record.customModules;
+        const selected = new Set(selectedModules || []);
         customModuleList.innerHTML = moduleOptions.map(module => `
           <label><input type="checkbox" value="${escapeHtml(module)}" ${selected.has(module) ? "checked" : ""}> ${escapeHtml(module)}</label>
         `).join("");
@@ -1879,6 +1910,7 @@
         customModuleDialog.classList.remove("open");
         customModuleDialog.setAttribute("aria-hidden", "true");
         customModuleRecordId = null;
+        customModuleDate = null;
       }
 
       function saveCustomModules() {
@@ -1886,11 +1918,37 @@
         if (!record) return closeCustomModuleDialog();
         const selected = [...customModuleList.querySelectorAll("input:checked")].map(input => input.value);
         if (otherCustomModule.value.trim()) selected.push(otherCustomModule.value.trim());
-        record.customModules = [...new Set(selected)];
-        if (!record.customModules.length) return showToast("Selecione ao menos um módulo.");
+        const uniqueSelected = [...new Set(selected)];
+        if (!uniqueSelected.length) return showToast("Selecione ao menos um módulo.");
+        if (customModuleDate) {
+          record.dateDetails ||= {};
+          record.dateDetails[customModuleDate] = {
+            ...(record.dateDetails[customModuleDate] || {}),
+            module: "Módulo Customizado Cliente",
+            customModules: uniqueSelected
+          };
+        } else {
+          record.customModules = uniqueSelected;
+        }
         persist(record.id);
         closeCustomModuleDialog();
         render();
+      }
+
+      function updateSubitemModule(id, date, value) {
+        const record = records.find(item => item.id === id);
+        if (!record || record.locked) return;
+        record.dateDetails ||= {};
+        record.dateDetails[date] = {
+          ...(record.dateDetails[date] || {}),
+          module: value,
+          customModules: value === "Módulo Customizado Cliente" ? (record.dateDetails[date]?.customModules || []) : []
+        };
+        persist(record.id);
+        render();
+        if (value === "Módulo Customizado Cliente") {
+          requestAnimationFrame(() => openCustomModuleDialog(id, date));
+        }
       }
 
       function renderAdditionalDateList() {
@@ -1941,6 +1999,13 @@
         const record = records.find(item => item.id === additionalDatesRecordId);
         if (!record) return closeAdditionalDatesDialog();
         record.dates = useOnlyPrimary ? [record.date] : [...new Set([record.date, ...pendingAdditionalDates])].sort();
+        record.dateDetails ||= {};
+        Object.keys(record.dateDetails).forEach(date => {
+          if (!record.dates.includes(date) || date === record.date) delete record.dateDetails[date];
+        });
+        record.dates.filter(date => date !== record.date).forEach(date => {
+          record.dateDetails[date] ||= {};
+        });
         persist(record.id);
         closeAdditionalDatesDialog();
         render();
@@ -2328,11 +2393,11 @@
       }
 
       function downloadImportTemplate() {
-        downloadCsv("modelo-importacao-treinamentos.csv", [
-          importHeaders,
-          ["15/01/2026", "16/01/2026|17/01/2026", "02:30", "Cliente Exemplo", "Módulo Customizado Cliente", "Olos Monitor|Relatórios", "Completo", "Nome do solicitante", "Remoto", "https://exemplo.com/projeto", "Sim", "Nome do analista", "Exemplo — apague esta linha antes de importar"]
-        ]);
-        showToast("Modelo de importação gerado.");
+        const link = document.createElement("a");
+        link.href = "docs/Modelo_Importacao_Historico_Treinamentos.xlsx";
+        link.download = "Modelo_Importacao_Historico_Treinamentos.xlsx";
+        link.click();
+        showToast("Modelo em Excel gerado.");
       }
 
       function parseCsv(text) {
@@ -2365,6 +2430,26 @@
           .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
       }
 
+      function decodeCsvBuffer(buffer) {
+        try {
+          return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+        } catch {
+          return new TextDecoder("windows-1252").decode(buffer);
+        }
+      }
+
+      function rowsFromImportFile(file, buffer) {
+        const extension = file.name.split(".").pop()?.toLowerCase();
+        if (extension === "xlsx" || extension === "xls") {
+          if (!window.XLSX) throw new Error("Não foi possível carregar o leitor de Excel. Verifique sua conexão e tente novamente.");
+          const workbook = window.XLSX.read(buffer, { type: "array", cellDates: false });
+          const sheetName = workbook.SheetNames.find(name => normalizeHeader(name) === "importacao") || workbook.SheetNames[0];
+          if (!sheetName) throw new Error("A planilha não possui abas para importar.");
+          return window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: "", raw: false });
+        }
+        return parseCsv(decodeCsvBuffer(buffer));
+      }
+
       function normalizeImportedDate(value) {
         const text = String(value || "").trim();
         if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
@@ -2376,13 +2461,14 @@
         const reader = new FileReader();
         reader.onload = () => {
           try {
-            const rows = parseCsv(String(reader.result || ""));
+            const rows = rowsFromImportFile(file, reader.result);
             if (rows.length < 2) throw new Error("Arquivo sem registros.");
             const headers = rows[0].map(normalizeHeader);
             const indexOf = (...names) => headers.findIndex(header => names.includes(header));
             const indexes = {
-              date: indexOf("data"), dates: indexOf("datas adicionais"), duration: indexOf("duracao"),
-              client: indexOf("cliente"), module: indexOf("modulos", "modulo"), customModules: indexOf("modulos customizados"),
+              date: indexOf("data", "data do treinamento"), dates: indexOf("datas adicionais", "outras datas"), duration: indexOf("duracao", "duracao do treinamento"),
+              client: indexOf("cliente"), module: indexOf("modulos", "modulo"),
+              customModules: indexOf("modulos customizados", "modulo customizado", "modulos customizado", "modulo customizados"),
               type: indexOf("tipo"), requester: indexOf("solicitacao", "solicitante"), location: indexOf("local"),
               projectLink: indexOf("link do projeto ou chamado wrike ou fresh", "link do projeto ou chamado", "link projeto ou chamado"),
               participantsDirectory: indexOf("diretorio lista de participantes"),
@@ -2402,6 +2488,7 @@
                 id: importedId,
                 month: date.slice(0, 7), date, dates: [...new Set([date, ...additionalDates])].sort(),
                 duration: normalizeDuration(get("duration")), client: get("client"), module: get("module") || (customModules.length ? "Módulo Customizado Cliente" : ""), customModules,
+                dateDetails: {},
                 type: get("type"), requester: get("requester"), location: get("location"),
                 projectLink: get("projectLink") || get("participantsDirectory"),
                 survey: get("survey"), cxResource: get("cxResource"), notes: get("notes"), locked: true
@@ -2417,7 +2504,7 @@
             showToast(error.message || "Não foi possível importar o arquivo.");
           }
         };
-        reader.readAsText(file, "UTF-8");
+        reader.readAsArrayBuffer(file);
       }
 
       function csvCell(value) {

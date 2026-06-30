@@ -3,3 +3,5 @@ docs/manual_render/
 docs/tmp_render/
 ~$*
 docs/~$*
+outputs/
+tmp/
