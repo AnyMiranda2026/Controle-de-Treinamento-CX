@@ -1680,10 +1680,10 @@
                 subrow.innerHTML = `
                   <td class="subitem-index">↳ ${index + 1}.${subIndex + 1}</td>
                   <td class="subitem-date">${formatDate(date)}</td>
-                  <td>-</td>
+                  <td class="subitem-duration-cell"></td>
                   <td>${escapeHtml(record.client || "-")}</td>
                   <td class="subitem-module-cell"></td>
-                  <td>${escapeHtml(record.type || "-")}</td>
+                  <td class="subitem-type-cell"></td>
                   <td>${escapeHtml(record.requester || "-")}</td>
                   <td>${escapeHtml(record.location || "-")}</td>
                   <td>${safeLink ? `<a href="${escapeHtml(safeLink)}" target="_blank" rel="noopener">Abrir link</a>` : "-"}</td>
@@ -1694,7 +1694,7 @@
                 const moduleSelect = template.content.querySelector('[data-field="module"]').cloneNode(true);
                 moduleSelect.removeAttribute("data-field");
                 moduleSelect.setAttribute("aria-label", `Módulo do subitem ${index + 1}.${subIndex + 1}`);
-                moduleSelect.value = detail.module || record.module || "";
+                moduleSelect.value = detail.module || "";
                 moduleSelect.disabled = Boolean(record.locked);
                 if (moduleSelect.value === "Módulo Customizado Cliente" && detail.customModules?.length) {
                   moduleSelect.options[moduleSelect.selectedIndex].textContent = `Customizado: ${detail.customModules.join(", ")}`;
@@ -1702,6 +1702,26 @@
                 }
                 moduleSelect.addEventListener("change", event => updateSubitemModule(record.id, date, event.target.value));
                 subrow.querySelector(".subitem-module-cell").appendChild(moduleSelect);
+
+                const durationInput = template.content.querySelector('[data-field="duration"]').cloneNode(true);
+                durationInput.removeAttribute("data-field");
+                durationInput.setAttribute("aria-label", `Duração do subitem ${index + 1}.${subIndex + 1}`);
+                durationInput.value = detail.duration || "";
+                durationInput.disabled = Boolean(record.locked);
+                durationInput.addEventListener("input", event => updateSubitemField(record.id, date, "duration", event.target.value));
+                durationInput.addEventListener("blur", event => {
+                  const normalized = normalizeDuration(event.target.value);
+                  if (normalized !== event.target.value) updateSubitemField(record.id, date, "duration", normalized, true);
+                });
+                subrow.querySelector(".subitem-duration-cell").appendChild(durationInput);
+
+                const typeSelect = template.content.querySelector('[data-field="type"]').cloneNode(true);
+                typeSelect.removeAttribute("data-field");
+                typeSelect.setAttribute("aria-label", `Tipo do subitem ${index + 1}.${subIndex + 1}`);
+                typeSelect.value = detail.type || "";
+                typeSelect.disabled = Boolean(record.locked);
+                typeSelect.addEventListener("change", event => updateSubitemField(record.id, date, "type", event.target.value, true));
+                subrow.querySelector(".subitem-type-cell").appendChild(typeSelect);
                 body.appendChild(subrow);
               });
             }
@@ -1768,9 +1788,22 @@
           showToast("Informe a duração como HH:MM (ex.: 01:30) ou em horas (ex.: 1,5).");
           return;
         }
+        const invalidSubitemDuration = Object.values(record.dateDetails || {})
+          .some(detail => detail.duration && !durationToMinutes(detail.duration));
+        if (invalidSubitemDuration) {
+          showToast("Revise a duração das datas adicionais. Use HH:MM ou horas decimais.");
+          return;
+        }
         if (record.module === "Módulo Customizado Cliente" && !record.customModules?.length) {
           showToast("Informe ao menos um módulo customizado antes de salvar.");
           openCustomModuleDialog(record.id);
+          return;
+        }
+        const incompleteCustomSubitem = Object.entries(record.dateDetails || {})
+          .find(([, detail]) => detail.module === "Módulo Customizado Cliente" && !detail.customModules?.length);
+        if (incompleteCustomSubitem) {
+          showToast("Informe os módulos customizados da data adicional antes de salvar.");
+          openCustomModuleDialog(record.id, incompleteCustomSubitem[0]);
           return;
         }
         record.locked = true;
@@ -1787,7 +1820,9 @@
           const detailModule = sourceDetail.module || source.module || "";
           target.dateDetails[date] = {
             ...sourceDetail,
+            duration: sourceDetail.duration || (date === source.date ? source.duration : ""),
             module: detailModule,
+            type: sourceDetail.type || (date === source.date ? source.type : ""),
             customModules: detailModule === "Módulo Customizado Cliente"
               ? (sourceDetail.customModules?.length ? sourceDetail.customModules : (source.customModules || []))
               : []
@@ -1795,8 +1830,7 @@
         });
         target.dates = [...new Set([...recordDates(target), ...recordDates(source)])].sort();
         target.month = target.date.slice(0, 7);
-        target.duration = minutesToDuration(durationToMinutes(target.duration) + durationToMinutes(source.duration));
-        fields.filter(field => !["date", "duration", "notes", "module"].includes(field)).forEach(field => {
+        fields.filter(field => !["date", "duration", "notes", "module", "type"].includes(field)).forEach(field => {
           if (!target[field] && source[field]) target[field] = source[field];
         });
         if (source.notes && source.notes !== target.notes) {
@@ -1891,6 +1925,18 @@
         return [...new Set(labels)];
       }
 
+      function typeLabels(record) {
+        return [...new Set([
+          fieldValue(record, "type"),
+          ...Object.values(record.dateDetails || {}).map(detail => String(detail.type || "").trim())
+        ].filter(Boolean))];
+      }
+
+      function recordTotalDurationMinutes(record) {
+        return durationToMinutes(record.duration) + Object.values(record.dateDetails || {})
+          .reduce((total, detail) => total + durationToMinutes(detail.duration), 0);
+      }
+
       function openCustomModuleDialog(id, date = null) {
         const record = records.find(item => item.id === id);
         if (!record) return;
@@ -1949,6 +1995,20 @@
         if (value === "Módulo Customizado Cliente") {
           requestAnimationFrame(() => openCustomModuleDialog(id, date));
         }
+      }
+
+      function updateSubitemField(id, date, field, value, shouldRender = false) {
+        const record = records.find(item => item.id === id);
+        if (!record || record.locked || !["duration", "type"].includes(field)) return;
+        record.dateDetails ||= {};
+        record.dateDetails[date] = {
+          ...(record.dateDetails[date] || {}),
+          [field]: value
+        };
+        persist(record.id);
+        updateStats(currentRecords());
+        renderDashboard();
+        if (shouldRender) render();
       }
 
       function renderAdditionalDateList() {
@@ -2021,6 +2081,10 @@
           return [...new Set(records.flatMap(moduleLabels).filter(value => value !== "Não informado"))]
             .sort((a, b) => a.localeCompare(b, "pt-BR"));
         }
+        if (field === "type") {
+          return [...new Set(records.flatMap(typeLabels))]
+            .sort((a, b) => a.localeCompare(b, "pt-BR"));
+        }
         return [...new Set(records.map(record => fieldValue(record, field)).filter(Boolean))]
           .sort((a, b) => a.localeCompare(b, "pt-BR"));
       }
@@ -2091,7 +2155,7 @@
             (!filters.client || fieldValue(record, "client") === filters.client) &&
             (!filters.cxResource || fieldValue(record, "cxResource") === filters.cxResource) &&
             (!filters.requester || fieldValue(record, "requester") === filters.requester) &&
-            (!filters.type || fieldValue(record, "type") === filters.type) &&
+            (!filters.type || typeLabels(record).includes(filters.type)) &&
             (!filters.module || moduleLabels(record).includes(filters.module));
         });
       }
@@ -2100,6 +2164,12 @@
         if (field === "module") {
           return items.reduce((acc, record) => {
             moduleLabels(record).forEach(label => { acc[label] = (acc[label] || 0) + 1; });
+            return acc;
+          }, {});
+        }
+        if (field === "type") {
+          return items.reduce((acc, record) => {
+            typeLabels(record).forEach(label => { acc[label] = (acc[label] || 0) + 1; });
             return acc;
           }, {});
         }
@@ -2141,7 +2211,7 @@
       function sumHoursBy(items, field) {
         return items.reduce((acc, record) => {
           const label = fieldValue(record, field) || "Não informado";
-          acc[label] = (acc[label] || 0) + durationToMinutes(record.duration) / 60;
+          acc[label] = (acc[label] || 0) + recordTotalDurationMinutes(record) / 60;
           return acc;
         }, {});
       }
@@ -2251,7 +2321,7 @@
         const cxCount = uniqueCount(data, "cxResource");
 
         dashboardEls.kpiTotalTrainings.textContent = data.length;
-        dashboardEls.kpiTotalHours.textContent = `${formatNumber(data.reduce((sum, record) => sum + durationToMinutes(record.duration) / 60, 0))} h`;
+        dashboardEls.kpiTotalHours.textContent = `${formatNumber(data.reduce((sum, record) => sum + recordTotalDurationMinutes(record) / 60, 0))} h`;
         dashboardEls.kpiTotalClients.textContent = uniqueCount(data, "client");
         dashboardEls.kpiTotalCx.textContent = cxCount;
         dashboardEls.kpiAvgCx.textContent = formatNumber(cxCount ? data.length / cxCount : 0);
@@ -2317,10 +2387,10 @@
         dashboardEls.details.innerHTML = data.length ? data.map(record => `
           <tr>
             <td>${formatRecordDates(record)}</td>
-            <td>${escapeHtml(record.duration || "-")}</td>
+            <td>${escapeHtml(recordTotalDurationMinutes(record) ? minutesToDuration(recordTotalDurationMinutes(record)) : "-")}</td>
             <td>${escapeHtml(record.client || "-")}</td>
             <td>${escapeHtml(moduleLabels(record).join(", ") || "-")}</td>
-            <td>${escapeHtml(record.type || "-")}</td>
+            <td>${escapeHtml(typeLabels(record).join(", ") || "-")}</td>
             <td>${escapeHtml(record.requester || "-")}</td>
             <td>${escapeHtml(record.location || "-")}</td>
             <td>${escapeHtml(record.cxResource || "-")}</td>
