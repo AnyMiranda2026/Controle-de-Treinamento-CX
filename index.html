@@ -1925,6 +1925,22 @@
         return [...new Set(labels)];
       }
 
+      function moduleLabelsForDate(record, date) {
+        const detail = date === record.date ? record : (record.dateDetails?.[date] || {});
+        if (detail.module === "Módulo Customizado Cliente" && detail.customModules?.length) {
+          return [...detail.customModules];
+        }
+        return detail.module ? [detail.module] : [];
+      }
+
+      function typeForDate(record, date) {
+        return date === record.date ? fieldValue(record, "type") : String(record.dateDetails?.[date]?.type || "").trim();
+      }
+
+      function durationForDate(record, date) {
+        return date === record.date ? String(record.duration || "").trim() : String(record.dateDetails?.[date]?.duration || "").trim();
+      }
+
       function typeLabels(record) {
         return [...new Set([
           fieldValue(record, "type"),
@@ -1935,6 +1951,22 @@
       function recordTotalDurationMinutes(record) {
         return durationToMinutes(record.duration) + Object.values(record.dateDetails || {})
           .reduce((total, detail) => total + durationToMinutes(detail.duration), 0);
+      }
+
+      function dateMatchesDashboardFilters(record, date, filters) {
+        const [year, month] = date.slice(0, 7).split("-");
+        const periodMatches = filters.scope === "all" || (
+          (!filters.month || month === filters.month) && (!filters.year || year === filters.year)
+        );
+        return periodMatches &&
+          (!filters.type || typeForDate(record, date) === filters.type) &&
+          (!filters.module || moduleLabelsForDate(record, date).includes(filters.module));
+      }
+
+      function recordDurationMinutesForFilters(record, filters) {
+        return recordDates(record)
+          .filter(date => dateMatchesDashboardFilters(record, date, filters))
+          .reduce((total, date) => total + durationToMinutes(durationForDate(record, date)), 0);
       }
 
       function openCustomModuleDialog(id, date = null) {
@@ -2144,32 +2176,33 @@
 
       function filteredDashboardRecords(filters = dashboardFilters()) {
         return records.filter(record => {
-          const monthMatches = filters.scope === "all" || (
-            recordDates(record).some(date => {
-              const [year, month] = date.slice(0, 7).split("-");
-              return (!filters.month || month === filters.month) && (!filters.year || year === filters.year);
-            })
-          );
+          const dateMatches = recordDates(record).some(date => dateMatchesDashboardFilters(record, date, filters));
 
-          return monthMatches &&
+          return dateMatches &&
             (!filters.client || fieldValue(record, "client") === filters.client) &&
             (!filters.cxResource || fieldValue(record, "cxResource") === filters.cxResource) &&
-            (!filters.requester || fieldValue(record, "requester") === filters.requester) &&
-            (!filters.type || typeLabels(record).includes(filters.type)) &&
-            (!filters.module || moduleLabels(record).includes(filters.module));
+            (!filters.requester || fieldValue(record, "requester") === filters.requester);
         });
       }
 
-      function countBy(items, field) {
+      function countBy(items, field, filters = null) {
         if (field === "module") {
           return items.reduce((acc, record) => {
-            moduleLabels(record).forEach(label => { acc[label] = (acc[label] || 0) + 1; });
+            const dates = filters
+              ? recordDates(record).filter(date => dateMatchesDashboardFilters(record, date, filters))
+              : recordDates(record);
+            dates.forEach(date => moduleLabelsForDate(record, date)
+              .forEach(label => { acc[label] = (acc[label] || 0) + 1; }));
             return acc;
           }, {});
         }
         if (field === "type") {
           return items.reduce((acc, record) => {
-            typeLabels(record).forEach(label => { acc[label] = (acc[label] || 0) + 1; });
+            const dates = filters
+              ? recordDates(record).filter(date => dateMatchesDashboardFilters(record, date, filters))
+              : recordDates(record);
+            dates.map(date => typeForDate(record, date)).filter(Boolean)
+              .forEach(label => { acc[label] = (acc[label] || 0) + 1; });
             return acc;
           }, {});
         }
@@ -2186,8 +2219,11 @@
           .slice(0, limit);
       }
 
-      function topEntry(items, field) {
-        return sortedEntries(countBy(items.filter(record => fieldValue(record, field)), field), 1)[0] || ["-", 0];
+      function topEntry(items, field, filters = null) {
+        const filteredItems = ["module", "type"].includes(field)
+          ? items
+          : items.filter(record => fieldValue(record, field));
+        return sortedEntries(countBy(filteredItems, field, filters), 1)[0] || ["-", 0];
       }
 
       function uniqueCount(items, field) {
@@ -2208,10 +2244,10 @@
         return recordDates(record).map(formatDate).join(", ") || "-";
       }
 
-      function sumHoursBy(items, field) {
+      function sumHoursBy(items, field, filters) {
         return items.reduce((acc, record) => {
           const label = fieldValue(record, field) || "Não informado";
-          acc[label] = (acc[label] || 0) + recordTotalDurationMinutes(record) / 60;
+          acc[label] = (acc[label] || 0) + recordDurationMinutesForFilters(record, filters) / 60;
           return acc;
         }, {});
       }
@@ -2317,11 +2353,11 @@
         const [topClient, topClientCount] = topEntry(data, "client");
         const [topRequester, topRequesterCount] = topEntry(data, "requester");
         const [topCx, topCxCount] = topEntry(data, "cxResource");
-        const [topModule, topModuleCount] = topEntry(data, "module");
+        const [topModule, topModuleCount] = topEntry(data, "module", filters);
         const cxCount = uniqueCount(data, "cxResource");
 
         dashboardEls.kpiTotalTrainings.textContent = data.length;
-        dashboardEls.kpiTotalHours.textContent = `${formatNumber(data.reduce((sum, record) => sum + recordTotalDurationMinutes(record) / 60, 0))} h`;
+        dashboardEls.kpiTotalHours.textContent = `${formatNumber(data.reduce((sum, record) => sum + recordDurationMinutesForFilters(record, filters) / 60, 0))} h`;
         dashboardEls.kpiTotalClients.textContent = uniqueCount(data, "client");
         dashboardEls.kpiTotalCx.textContent = cxCount;
         dashboardEls.kpiAvgCx.textContent = formatNumber(cxCount ? data.length / cxCount : 0);
@@ -2379,18 +2415,22 @@
         renderBarChart(dashboardEls.charts.cxRanking, sortedEntries(countBy(data, "cxResource"), 10));
         renderBarChart(dashboardEls.charts.clients, sortedEntries(countBy(data, "client"), 10));
         renderBarChart(dashboardEls.charts.requesters, sortedEntries(countBy(data, "requester"), 10));
-        renderColumnChart(dashboardEls.charts.modules, sortedEntries(countBy(data, "module"), 10));
+        renderColumnChart(dashboardEls.charts.modules, sortedEntries(countBy(data, "module", filters), 10));
         renderDonutChart(dashboardEls.charts.location, sortedEntries(countBy(data, "location"), 7));
-        renderBarChart(dashboardEls.charts.hoursCx, sortedEntries(sumHoursBy(data, "cxResource"), 10), 10, value => `${formatNumber(value)} h`);
-        renderBarChart(dashboardEls.charts.hoursClient, sortedEntries(sumHoursBy(data, "client"), 10), 10, value => `${formatNumber(value)} h`);
+        renderBarChart(dashboardEls.charts.hoursCx, sortedEntries(sumHoursBy(data, "cxResource", filters), 10), 10, value => `${formatNumber(value)} h`);
+        renderBarChart(dashboardEls.charts.hoursClient, sortedEntries(sumHoursBy(data, "client", filters), 10), 10, value => `${formatNumber(value)} h`);
 
-        dashboardEls.details.innerHTML = data.length ? data.map(record => `
+        const detailRows = data.flatMap(record => recordDates(record)
+          .filter(date => dateMatchesDashboardFilters(record, date, filters))
+          .map(date => ({ record, date })))
+          .sort((a, b) => a.date.localeCompare(b.date));
+        dashboardEls.details.innerHTML = detailRows.length ? detailRows.map(({ record, date }) => `
           <tr>
-            <td>${formatRecordDates(record)}</td>
-            <td>${escapeHtml(recordTotalDurationMinutes(record) ? minutesToDuration(recordTotalDurationMinutes(record)) : "-")}</td>
+            <td>${formatDate(date)}</td>
+            <td>${escapeHtml(durationForDate(record, date) || "-")}</td>
             <td>${escapeHtml(record.client || "-")}</td>
-            <td>${escapeHtml(moduleLabels(record).join(", ") || "-")}</td>
-            <td>${escapeHtml(typeLabels(record).join(", ") || "-")}</td>
+            <td>${escapeHtml(moduleLabelsForDate(record, date).join(", ") || "-")}</td>
+            <td>${escapeHtml(typeForDate(record, date) || "-")}</td>
             <td>${escapeHtml(record.requester || "-")}</td>
             <td>${escapeHtml(record.location || "-")}</td>
             <td>${escapeHtml(record.cxResource || "-")}</td>
