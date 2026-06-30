@@ -4,6 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Controle de Treinamentos</title>
+  <script>
+    try {
+      document.documentElement.dataset.theme = localStorage.getItem("olos.trainingTheme") || "dark";
+    } catch {
+      document.documentElement.dataset.theme = "dark";
+    }
+  </script>
   <style>
     :root {
       --navy: #08094d;
@@ -1003,6 +1010,34 @@
       box-shadow: 0 8px 20px rgba(255, 120, 0, .17);
     }
 
+    .theme-switch {
+      display: inline-flex;
+      gap: 3px;
+      margin-left: auto;
+      padding: 3px;
+      border: 1px solid #303946;
+      border-radius: 10px;
+      background: #11161d;
+    }
+
+    .theme-choice {
+      min-height: 32px;
+      padding: 6px 11px;
+      color: #919caa;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      font-size: 11px;
+      font-weight: 700;
+      transition: .18s ease;
+    }
+
+    .theme-choice.active {
+      color: #111;
+      background: var(--orange);
+      box-shadow: 0 5px 14px rgba(255, 120, 0, .2);
+    }
+
     .toolbar {
       margin-top: 12px;
       padding: 13px clamp(20px, 3vw, 48px);
@@ -1171,6 +1206,137 @@
     .empty-chart { color: #8e99a7; border-color: #36404c; background: #141a22; }
     .toast { border: 1px solid #4d3a27; background: #211a14; box-shadow: 0 14px 34px rgba(0, 0, 0, .42); }
 
+    :root[data-theme="light"] {
+      --navy: #17202b;
+      --navy-2: #253141;
+      --ink: #202733;
+      --muted: #697586;
+      --line: #d9dee6;
+      --soft: #f3f5f8;
+      color-scheme: light;
+    }
+
+    :root[data-theme="light"] body {
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 88% 4%, rgba(255, 120, 0, .08), transparent 24%),
+        #f1f3f6;
+    }
+
+    :root[data-theme="light"] .hero {
+      border-color: #26313d;
+      background:
+        radial-gradient(circle at 92% 52%, rgba(255, 120, 0, .23), transparent 19%),
+        linear-gradient(125deg, #101823 0%, #17212c 67%, #2a1d13 100%);
+    }
+
+    :root[data-theme="light"] .view-tabs { background: transparent; }
+    :root[data-theme="light"] .tab-btn {
+      color: #536071;
+      border-color: #d4dae3;
+      background: #ffffff;
+    }
+    :root[data-theme="light"] .tab-btn.active { color: #151515; border-color: var(--orange); background: var(--orange); }
+    :root[data-theme="light"] .theme-switch { border-color: #d4dae3; background: #ffffff; }
+    :root[data-theme="light"] .theme-choice { color: #6b7685; }
+    :root[data-theme="light"] .theme-choice.active { color: #111; background: var(--orange); }
+
+    :root[data-theme="light"] .toolbar {
+      color: var(--ink);
+      border-color: #dfe3e9;
+      background: rgba(255, 255, 255, .92);
+    }
+    :root[data-theme="light"] .month-label { color: #202733; }
+    :root[data-theme="light"] .btn {
+      color: #344052;
+      border-color: #cfd6e0;
+      background: #ffffff;
+    }
+    :root[data-theme="light"] .btn:hover { color: #18202a; border-color: #9faaba; background: #f8f9fb; }
+    :root[data-theme="light"] .btn-primary { color: #151515; border-color: var(--orange); background: var(--orange); }
+    :root[data-theme="light"] .btn-secondary { color: white; border-color: #253141; background: #253141; }
+
+    :root[data-theme="light"] .table-card,
+    :root[data-theme="light"] .dashboard-card,
+    :root[data-theme="light"] .kpi-card {
+      color: var(--ink);
+      border-color: #d9dee6;
+      background: #ffffff;
+      box-shadow: 0 14px 34px rgba(29, 40, 55, .08);
+    }
+
+    :root[data-theme="light"] thead th {
+      color: #ffffff;
+      border-right-color: #3b4654;
+      background: #1d2632;
+    }
+
+    :root[data-theme="light"] tbody tr,
+    :root[data-theme="light"] tbody tr.is-locked { background: #ffffff; }
+    :root[data-theme="light"] tbody tr:nth-child(even) { background: #f7f8fa; }
+    :root[data-theme="light"] tbody tr:hover { background: #fff7ef; }
+    :root[data-theme="light"] tbody td { color: #303a48; border-color: #dde2e9; }
+    :root[data-theme="light"] tbody input,
+    :root[data-theme="light"] tbody select,
+    :root[data-theme="light"] tbody textarea { color: #263140; }
+    :root[data-theme="light"] tbody input::placeholder,
+    :root[data-theme="light"] tbody textarea::placeholder { color: #8b95a3; }
+    :root[data-theme="light"] tbody select option,
+    :root[data-theme="light"] .filter-field select option { color: #202733; background: #ffffff; }
+    :root[data-theme="light"] tbody input:focus,
+    :root[data-theme="light"] tbody select:focus,
+    :root[data-theme="light"] tbody textarea:focus { color: #202733; background: #ffffff; }
+    :root[data-theme="light"] tbody tr.is-locked input,
+    :root[data-theme="light"] tbody tr.is-locked select,
+    :root[data-theme="light"] tbody tr.is-locked textarea { color: #4d5968; }
+    :root[data-theme="light"] tbody tr.is-locked input:not([type="date"]),
+    :root[data-theme="light"] tbody tr.is-locked select,
+    :root[data-theme="light"] tbody tr.is-locked textarea { background: rgba(240, 243, 247, .72); }
+
+    :root[data-theme="light"] .merge-toggle { color: #9a4a08; border-color: #edc9a8; background: #fff7ef; }
+    :root[data-theme="light"] .merged-subrow { background: #f3f5f8 !important; }
+    :root[data-theme="light"] .merged-subrow td { color: #526071; }
+    :root[data-theme="light"] .merged-subrow .subitem-index,
+    :root[data-theme="light"] .merged-subrow .subitem-date { color: #b65300; }
+    :root[data-theme="light"] .row-action { color: #3c4756; border-color: #d4dae2; background: #ffffff; }
+    :root[data-theme="light"] .save-row { color: white; border-color: #187c59; background: #187c59; }
+    :root[data-theme="light"] .edit-row { color: #a54e00; }
+    :root[data-theme="light"] .delete-row { color: #b33a49; }
+    :root[data-theme="light"] .footer-note { color: #6f7a88; border-color: #dde2e9; background: #f8f9fb; }
+    :root[data-theme="light"] .empty strong { color: #253141; }
+
+    :root[data-theme="light"] .month-picker,
+    :root[data-theme="light"] .dialog-overlay { background: rgba(20, 25, 32, .55); }
+    :root[data-theme="light"] .month-picker-card,
+    :root[data-theme="light"] .dialog-card { color: #202733; border-color: #d6dce5; background: #ffffff; }
+    :root[data-theme="light"] .month-picker-head strong,
+    :root[data-theme="light"] .dialog-head strong { color: #202733; }
+    :root[data-theme="light"] .month-option,
+    :root[data-theme="light"] .custom-module-list label,
+    :root[data-theme="light"] .additional-date-item { color: #344052; border-color: #d8dee6; background: #f7f8fa; }
+    :root[data-theme="light"] .dialog-card .other-module,
+    :root[data-theme="light"] .additional-date-entry input { color: #202733; border-color: #cfd6df; background: #ffffff; }
+
+    :root[data-theme="light"] .dashboard-card h2 { color: #bd5700; }
+    :root[data-theme="light"] .dashboard-card h3 { color: #27313e; }
+    :root[data-theme="light"] .dashboard-card p { color: #748091; }
+    :root[data-theme="light"] .filter-field label { color: #5e6979; }
+    :root[data-theme="light"] .filter-field select,
+    :root[data-theme="light"] .filter-field input { color: #27313e; border-color: #cfd6df; background: #ffffff; }
+    :root[data-theme="light"] .kpi-card span { color: #6d7887; }
+    :root[data-theme="light"] .kpi-card small { color: #4c5868; }
+    :root[data-theme="light"] .bar-label,
+    :root[data-theme="light"] .legend-item { color: #4b5665; }
+    :root[data-theme="light"] .bar-track { background: #e8ebf0; }
+    :root[data-theme="light"] .column-wrap { border-bottom-color: #d9dfe7; }
+    :root[data-theme="light"] .column-label { color: #697586; }
+    :root[data-theme="light"] .donut::after { background: #ffffff; box-shadow: inset 0 0 0 1px #d9dee6; }
+    :root[data-theme="light"] .insight-item { border-color: #d9dee6; background: #f7f8fa; }
+    :root[data-theme="light"] .insight-item span { color: #6f7b8b; }
+    :root[data-theme="light"] .insight-item strong { color: #27313e; }
+    :root[data-theme="light"] .empty-chart { color: #758091; border-color: #ccd3dc; background: #f8f9fb; }
+    :root[data-theme="light"] .toast { color: white; border-color: #384453; background: #27313e; }
+
     @media (max-width: 980px) {
       .hero-inner { grid-template-columns: 1fr 1fr; }
       h1 { grid-column: 1 / -1; grid-row: 1; }
@@ -1190,7 +1356,8 @@
       .toolbar { flex-direction: column; }
       .footer-note { flex-direction: column; }
       .actions .btn { flex: 1; }
-      .view-tabs { justify-content: center; }
+      .view-tabs { justify-content: center; flex-wrap: wrap; }
+      .theme-switch { width: 100%; margin-left: 0; justify-content: center; }
       .filter-grid, .kpi-grid, .insights-list { grid-template-columns: 1fr; }
       .donut-layout { grid-template-columns: 1fr; }
     }
@@ -1250,6 +1417,10 @@
     <nav class="view-tabs" aria-label="Alternar visão">
       <button class="tab-btn active" type="button" data-view="entriesView">Lançamentos</button>
       <button class="tab-btn" type="button" data-view="dashboardView">Dashboard Executivo</button>
+      <div class="theme-switch" role="group" aria-label="Escolher tema">
+        <button class="theme-choice" type="button" data-theme-choice="dark" aria-pressed="true">☾ Escuro</button>
+        <button class="theme-choice" type="button" data-theme-choice="light" aria-pressed="false">☀ Claro</button>
+      </div>
     </nav>
 
     <section class="view-panel active" id="entriesView">
@@ -2958,6 +3129,23 @@
           }
         }, 0);
       });
+      const themeChoices = [...document.querySelectorAll("[data-theme-choice]")];
+      function setTheme(theme, persistChoice = true) {
+        const selectedTheme = theme === "light" ? "light" : "dark";
+        document.documentElement.dataset.theme = selectedTheme;
+        themeChoices.forEach(button => {
+          const active = button.dataset.themeChoice === selectedTheme;
+          button.classList.toggle("active", active);
+          button.setAttribute("aria-pressed", String(active));
+        });
+        if (persistChoice) {
+          try { localStorage.setItem("olos.trainingTheme", selectedTheme); } catch {}
+        }
+      }
+      themeChoices.forEach(button => {
+        button.addEventListener("click", () => setTheme(button.dataset.themeChoice));
+      });
+      setTheme(document.documentElement.dataset.theme, false);
       document.querySelectorAll(".tab-btn").forEach(button => {
         button.addEventListener("click", () => {
           document.querySelectorAll(".tab-btn").forEach(tab => tab.classList.remove("active"));
