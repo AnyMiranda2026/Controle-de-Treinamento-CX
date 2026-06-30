@@ -23,7 +23,7 @@ Na primeira abertura da versão sincronizada, os dados históricos existentes ne
 
 ## Layout da importação histórica
 
-Use o arquivo [`docs/Layout_Importacao_Historico.csv`](docs/Layout_Importacao_Historico.csv) ou clique em **Baixar modelo** no painel.
+Use o arquivo [`docs/Layout_Importacao_Historico_v2.csv`](docs/Layout_Importacao_Historico_v2.csv) ou clique em **Baixar modelo** no painel.
 
 Campos aceitos:
 
@@ -36,10 +36,9 @@ Campos aceitos:
 7. Tipo.
 8. Solicitação.
 9. Local.
-10. Diretório - Lista de Participantes.
-11. Diretório - Avaliação.
-12. Envio da Pesquisa de Satisfação.
-13. Recurso CX.
-14. Observação.
+10. Link do Projeto ou Chamado (Wrike ou Fresh).
+11. Envio da Pesquisa de Satisfação.
+12. Recurso CX.
+13. Observação.
 
 Os registros importados entram salvos e bloqueados para edição.

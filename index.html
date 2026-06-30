@@ -308,7 +308,7 @@
 
     table {
       width: 100%;
-      min-width: 1710px;
+      min-width: 1580px;
       border-collapse: separate;
       border-spacing: 0;
     }
@@ -389,7 +389,7 @@
     .col-type { width: 180px; }
     .col-request { width: 150px; }
     .col-local { width: 115px; }
-    .col-dir { width: 225px; }
+    .col-link { width: 240px; }
     .col-survey { width: 145px; }
     .col-cx { width: 120px; }
     .col-notes { width: 180px; }
@@ -403,6 +403,63 @@
       font-size: 12px;
       font-weight: 700;
     }
+
+    .merge-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 6px;
+      border: 1px solid #cdd4e5;
+      border-radius: 7px;
+      color: var(--navy);
+      background: white;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .merge-count {
+      display: block;
+      margin-top: 4px;
+      color: var(--orange);
+      font-size: 9px;
+    }
+
+    .merged-subrow { background: #f2f4fb !important; }
+    .merged-subrow td { padding: 7px 8px; color: #555d78; vertical-align: middle; }
+    .merged-subrow .subitem-index { color: var(--navy); font-weight: 900; text-align: center; }
+    .merged-subrow .subitem-date { color: var(--navy); font-weight: 800; text-align: center; }
+    .merged-subrow .subitem-note { font-size: 11px; font-style: italic; }
+
+    .additional-date-entry {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .additional-date-entry input {
+      min-height: 40px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .additional-date-list { display: grid; gap: 7px; margin-top: 12px; }
+    .additional-date-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8f9fc;
+      color: var(--navy);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .remove-extra-date { border: 0; color: #9c3340; background: transparent; font-weight: 900; }
 
     .row-actions {
       display: flex;
@@ -933,7 +990,6 @@
         <button class="btn" id="importCsv">↑ Importar histórico</button>
         <button class="btn" id="downloadTemplate">Baixar modelo</button>
         <button class="btn btn-secondary" id="exportCsv">↓ Exportar CSV</button>
-        <button class="btn" id="printPage">Imprimir</button>
         <input type="file" id="importFile" accept=".csv,text/csv" hidden>
       </div>
     </section>
@@ -952,8 +1008,7 @@
                 <th class="col-type">Tipo</th>
                 <th class="col-request">Solicitação</th>
                 <th class="col-local">Local</th>
-                <th class="col-dir">Diretório - Lista de Participantes</th>
-                <th class="col-dir">Diretório - Avaliação</th>
+                <th class="col-link">Link do Projeto ou Chamado (Wrike ou Fresh)</th>
                 <th class="col-survey">Envio da Pesquisa de Satisfação</th>
                 <th class="col-cx">Recurso CX</th>
                 <th class="col-notes">Observação</th>
@@ -1164,8 +1219,7 @@
           <option>Na Olos</option>
         </select>
       </td>
-      <td><input type="text" data-field="participantsDirectory" placeholder="Cole o caminho ou link" aria-label="Diretório da lista de participantes"></td>
-      <td><input type="text" data-field="evaluationDirectory" placeholder="Cole o caminho ou link" aria-label="Diretório da avaliação"></td>
+      <td><input type="url" data-field="projectLink" placeholder="Cole o link do Wrike ou Fresh" aria-label="Link do Projeto ou Chamado"></td>
       <td>
         <select data-field="survey" aria-label="Envio da pesquisa de satisfação">
           <option value="">Selecione</option>
@@ -1209,6 +1263,22 @@
     </div>
   </div>
 
+  <div class="dialog-overlay" id="additionalDatesDialog" aria-hidden="true">
+    <div class="dialog-card" role="dialog" aria-modal="true" aria-label="Adicionar datas do mesmo treinamento">
+      <div class="dialog-head"><strong>Este treinamento teve outras datas?</strong></div>
+      <p>Adicione as demais datas realizadas para o mesmo cliente. Elas serão salvas como subitens do mesmo treinamento.</p>
+      <div class="additional-date-entry">
+        <input id="additionalDateInput" type="date" aria-label="Nova data do mesmo treinamento">
+        <button class="btn btn-secondary" id="addAdditionalDate" type="button">Adicionar data</button>
+      </div>
+      <div class="additional-date-list" id="additionalDateList"></div>
+      <div class="dialog-actions">
+        <button class="btn" id="singleDateOnly" type="button">Somente esta data</button>
+        <button class="btn btn-primary" id="confirmAdditionalDates" type="button">Confirmar datas</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
@@ -1245,6 +1315,9 @@
       const customModuleDialog = document.querySelector("#customModuleDialog");
       const customModuleList = document.querySelector("#customModuleList");
       const otherCustomModule = document.querySelector("#otherCustomModule");
+      const additionalDatesDialog = document.querySelector("#additionalDatesDialog");
+      const additionalDateInput = document.querySelector("#additionalDateInput");
+      const additionalDateList = document.querySelector("#additionalDateList");
       const dashboardEls = {
         filterScope: document.querySelector("#filterScope"),
         filterMonth: document.querySelector("#filterMonth"),
@@ -1290,7 +1363,7 @@
       ];
       const fields = [
         "date", "duration", "client", "module", "type", "requester", "location",
-        "participantsDirectory", "evaluationDirectory", "survey", "cxResource", "notes"
+        "projectLink", "survey", "cxResource", "notes"
       ];
       const detailFields = fields.filter(field => field !== "date");
 
@@ -1302,8 +1375,12 @@
       let applyingCloudSnapshot = false;
       const dirtyCloudIds = new Set();
       const pendingCloudDeletes = new Set();
+      let pendingCloudRecords = null;
       let pickerYear = selectedMonth.getFullYear();
       let customModuleRecordId = null;
+      let additionalDatesRecordId = null;
+      let pendingAdditionalDates = [];
+      const expandedMergedRows = new Set();
 
       function startOfMonth(date) {
         return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -1326,6 +1403,7 @@
           return savedRecords.map(record => ({
             locked: false,
             customModules: [],
+            projectLink: record.projectLink || record.participantsDirectory || record.evaluationDirectory || "",
             dates: record.date ? [record.date] : [],
             ...record,
             dates: Array.isArray(record.dates) && record.dates.length ? record.dates : (record.date ? [record.date] : [])
@@ -1408,6 +1486,29 @@
         if (cloudReady) scheduleCloudSync();
       }
 
+      function recordsSignature(items) {
+        const stable = value => {
+          if (Array.isArray(value)) return value.map(stable);
+          if (value && typeof value === "object") {
+            return Object.keys(value).sort().reduce((result, key) => {
+              result[key] = stable(value[key]);
+              return result;
+            }, {});
+          }
+          return value;
+        };
+        return JSON.stringify(stable([...items].sort((a, b) => String(a.id).localeCompare(String(b.id)))));
+      }
+
+      function applyCloudRecords(incomingRecords) {
+        if (recordsSignature(incomingRecords) === recordsSignature(records)) return;
+        applyingCloudSnapshot = true;
+        records = incomingRecords;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+        render();
+        applyingCloudSnapshot = false;
+      }
+
       async function initializeSharedHistory() {
         saveStatus.textContent = "Conectando ao histórico compartilhado...";
         try {
@@ -1422,18 +1523,31 @@
 
           cloudReady = true;
           onSnapshot(trainingsCollection, liveSnapshot => {
-            applyingCloudSnapshot = true;
-            records = liveSnapshot.docs.map(item => ({
-              locked: false,
-              customModules: [],
-              dates: [],
-              ...item.data(),
-              id: item.id
-            }));
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-            render();
-            saveStatus.textContent = "Histórico sincronizado";
-            applyingCloudSnapshot = false;
+            const incoming = liveSnapshot.docs.map(item => {
+              const data = item.data();
+              return {
+                locked: false,
+                customModules: [],
+                dates: [],
+                ...data,
+                projectLink: data.projectLink || data.participantsDirectory || data.evaluationDirectory || "",
+                id: item.id
+              };
+            });
+            const localById = new Map(records.map(record => [record.id, record]));
+            const incomingIds = new Set(incoming.map(record => record.id));
+            const merged = incoming.map(record => dirtyCloudIds.has(record.id) ? localById.get(record.id) : record);
+            records.filter(record => dirtyCloudIds.has(record.id) && !incomingIds.has(record.id)).forEach(record => merged.push(record));
+
+            if (recordsSignature(merged) === recordsSignature(records)) {
+              saveStatus.textContent = "Histórico sincronizado";
+            } else if (body.contains(document.activeElement)) {
+              pendingCloudRecords = merged;
+              saveStatus.textContent = "Atualização recebida · conclua o campo atual";
+            } else {
+              applyCloudRecords(merged);
+              saveStatus.textContent = "Histórico sincronizado";
+            }
           }, error => {
             console.error("Falha ao acompanhar histórico:", error);
             saveStatus.textContent = "Sem conexão · dados preservados localmente";
@@ -1463,25 +1577,22 @@
       }
 
       function makeRecord() {
-        const now = new Date();
-        const isCurrentMonth = monthKey(now) === monthKey(selectedMonth);
         return {
           id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
           month: monthKey(selectedMonth),
-          date: localDate(isCurrentMonth ? now : selectedMonth),
+          date: "",
           duration: "",
           client: "",
           module: "",
           type: "",
           requester: "",
           location: "",
-          participantsDirectory: "",
-          evaluationDirectory: "",
+          projectLink: "",
           survey: "",
           cxResource: "",
           notes: "",
           customModules: [],
-          dates: [localDate(isCurrentMonth ? now : selectedMonth)],
+          dates: [],
           locked: false
         };
       }
@@ -1507,7 +1618,23 @@
             const row = template.content.firstElementChild.cloneNode(true);
             row.dataset.id = record.id;
             row.classList.toggle("is-locked", Boolean(record.locked));
-            row.querySelector(".row-number").textContent = index + 1;
+            const dates = recordDates(record);
+            const rowNumber = row.querySelector(".row-number");
+            if (dates.length > 1) {
+              const expanded = expandedMergedRows.has(record.id);
+              rowNumber.innerHTML = `
+                <button class="merge-toggle" type="button" aria-expanded="${expanded}" title="${expanded ? "Recolher" : "Abrir"} datas mescladas">
+                  ${expanded ? "▾" : "▸"} ${index + 1}
+                </button>
+                <small class="merge-count">${dates.length} datas</small>`;
+              rowNumber.querySelector(".merge-toggle").addEventListener("click", () => {
+                if (expandedMergedRows.has(record.id)) expandedMergedRows.delete(record.id);
+                else expandedMergedRows.add(record.id);
+                render();
+              });
+            } else {
+              rowNumber.textContent = index + 1;
+            }
 
             fields.forEach(field => {
               const control = row.querySelector(`[data-field="${field}"]`);
@@ -1538,6 +1665,29 @@
             row.querySelector(".edit-row").addEventListener("click", () => unlockRecord(record.id));
             row.querySelector(".delete-row").addEventListener("click", () => deleteRecord(record.id));
             body.appendChild(row);
+
+            if (dates.length > 1 && expandedMergedRows.has(record.id)) {
+              dates.forEach((date, subIndex) => {
+                const subrow = document.createElement("tr");
+                const safeLink = safeProjectUrl(record.projectLink);
+                subrow.className = "merged-subrow";
+                subrow.innerHTML = `
+                  <td class="subitem-index">↳ ${index + 1}.${subIndex + 1}</td>
+                  <td class="subitem-date">${formatDate(date)}</td>
+                  <td>-</td>
+                  <td>${escapeHtml(record.client || "-")}</td>
+                  <td>${escapeHtml(moduleLabels(record).join(", ") || "-")}</td>
+                  <td>${escapeHtml(record.type || "-")}</td>
+                  <td>${escapeHtml(record.requester || "-")}</td>
+                  <td>${escapeHtml(record.location || "-")}</td>
+                  <td>${safeLink ? `<a href="${escapeHtml(safeLink)}" target="_blank" rel="noopener">Abrir link</a>` : "-"}</td>
+                  <td>${escapeHtml(record.survey || "-")}</td>
+                  <td>${escapeHtml(record.cxResource || "-")}</td>
+                  <td class="subitem-note">Data vinculada ao mesmo treinamento</td>
+                  <td></td>`;
+                body.appendChild(subrow);
+              });
+            }
           });
 
         emptyState.style.display = monthRecords.length ? "none" : "block";
@@ -1554,6 +1704,7 @@
           return;
         }
         let shouldRender = false;
+        let shouldAskAdditionalDates = false;
         const previousValue = record[field] || "";
         record[field] = value;
         if (field === "module") {
@@ -1563,6 +1714,7 @@
         if (field === "date") {
           if (previousValue !== value) {
             clearRecordDetails(record);
+            shouldAskAdditionalDates = Boolean(value);
           }
           if (value) {
             record.dates = [value];
@@ -1581,12 +1733,19 @@
         renderDashboard();
         if (shouldRender) {
           render();
+          if (shouldAskAdditionalDates) {
+            requestAnimationFrame(() => openAdditionalDatesDialog(record.id));
+          }
         }
       }
 
       function lockRecord(id) {
         const record = records.find(item => item.id === id);
         if (!record) return;
+        if (!record.date) {
+          showToast("Selecione a data do treinamento antes de salvar.");
+          return;
+        }
         record.duration = normalizeDuration(record.duration);
         if (record.duration && !durationToMinutes(record.duration)) {
           showToast("Informe a duração como HH:MM (ex.: 01:30) ou em horas (ex.: 1,5).");
@@ -1595,13 +1754,6 @@
         if (record.module === "Módulo Customizado Cliente" && !record.customModules?.length) {
           showToast("Informe ao menos um módulo customizado antes de salvar.");
           openCustomModuleDialog(record.id);
-          return;
-        }
-        const sameClient = records.find(item => item.id !== id &&
-          fieldValue(item, "client").toLocaleLowerCase("pt-BR") === fieldValue(record, "client").toLocaleLowerCase("pt-BR") &&
-          fieldValue(record, "client") && !recordDates(item).includes(record.date));
-        if (sameClient && window.confirm(`Já existe um treinamento para ${record.client} em outra data. Deseja mesclar os registros como um único treinamento realizado em vários dias?`)) {
-          mergeRecords(sameClient, record);
           return;
         }
         record.locked = true;
@@ -1676,6 +1828,15 @@
           .replaceAll("'", "&#039;");
       }
 
+      function safeProjectUrl(value) {
+        try {
+          const url = new URL(String(value || "").trim());
+          return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+        } catch {
+          return "";
+        }
+      }
+
       function durationToMinutes(value) {
         const text = String(value || "").trim().replace(",", ".");
         if (!text) return 0;
@@ -1730,6 +1891,60 @@
         persist(record.id);
         closeCustomModuleDialog();
         render();
+      }
+
+      function renderAdditionalDateList() {
+        additionalDateList.innerHTML = pendingAdditionalDates.length
+          ? pendingAdditionalDates.map(date => `
+              <div class="additional-date-item">
+                <span>${formatDate(date)}</span>
+                <button class="remove-extra-date" type="button" data-date="${date}" aria-label="Remover ${formatDate(date)}">×</button>
+              </div>`).join("")
+          : `<div class="additional-date-item"><span>Nenhuma data adicional selecionada.</span></div>`;
+        additionalDateList.querySelectorAll("[data-date]").forEach(button => {
+          button.addEventListener("click", () => {
+            pendingAdditionalDates = pendingAdditionalDates.filter(date => date !== button.dataset.date);
+            renderAdditionalDateList();
+          });
+        });
+      }
+
+      function openAdditionalDatesDialog(id) {
+        const record = records.find(item => item.id === id);
+        if (!record?.date) return;
+        additionalDatesRecordId = id;
+        pendingAdditionalDates = recordDates(record).filter(date => date !== record.date);
+        additionalDateInput.value = "";
+        renderAdditionalDateList();
+        additionalDatesDialog.classList.add("open");
+        additionalDatesDialog.setAttribute("aria-hidden", "false");
+      }
+
+      function closeAdditionalDatesDialog() {
+        additionalDatesDialog.classList.remove("open");
+        additionalDatesDialog.setAttribute("aria-hidden", "true");
+        additionalDatesRecordId = null;
+        pendingAdditionalDates = [];
+      }
+
+      function addAdditionalDate() {
+        const record = records.find(item => item.id === additionalDatesRecordId);
+        const date = additionalDateInput.value;
+        if (!record || !date) return showToast("Selecione uma data para adicionar.");
+        if (date === record.date) return showToast("Esta já é a data principal do treinamento.");
+        pendingAdditionalDates = [...new Set([...pendingAdditionalDates, date])].sort();
+        additionalDateInput.value = "";
+        renderAdditionalDateList();
+      }
+
+      function saveAdditionalDates(useOnlyPrimary = false) {
+        const record = records.find(item => item.id === additionalDatesRecordId);
+        if (!record) return closeAdditionalDatesDialog();
+        record.dates = useOnlyPrimary ? [record.date] : [...new Set([record.date, ...pendingAdditionalDates])].sort();
+        persist(record.id);
+        closeAdditionalDatesDialog();
+        render();
+        showToast(record.dates.length > 1 ? `${record.dates.length} datas vinculadas ao treinamento.` : "Treinamento com uma única data.");
       }
 
       function fieldValue(record, field) {
@@ -2097,8 +2312,8 @@
 
       const importHeaders = [
         "Data", "Datas adicionais", "Duração", "Cliente", "Módulos", "Módulos customizados",
-        "Tipo", "Solicitação", "Local", "Diretório - Lista de Participantes",
-        "Diretório - Avaliação", "Envio da Pesquisa de Satisfação", "Recurso CX", "Observação"
+        "Tipo", "Solicitação", "Local", "Link do Projeto ou Chamado (Wrike ou Fresh)",
+        "Envio da Pesquisa de Satisfação", "Recurso CX", "Observação"
       ];
 
       function downloadCsv(filename, rows) {
@@ -2115,7 +2330,7 @@
       function downloadImportTemplate() {
         downloadCsv("modelo-importacao-treinamentos.csv", [
           importHeaders,
-          ["15/01/2026", "16/01/2026|17/01/2026", "02:30", "Cliente Exemplo", "Módulo Customizado Cliente", "Olos Monitor|Relatórios", "Completo", "Nome do solicitante", "Remoto", "", "", "Sim", "Nome do analista", "Exemplo — apague esta linha antes de importar"]
+          ["15/01/2026", "16/01/2026|17/01/2026", "02:30", "Cliente Exemplo", "Módulo Customizado Cliente", "Olos Monitor|Relatórios", "Completo", "Nome do solicitante", "Remoto", "https://exemplo.com/projeto", "Sim", "Nome do analista", "Exemplo — apague esta linha antes de importar"]
         ]);
         showToast("Modelo de importação gerado.");
       }
@@ -2169,7 +2384,8 @@
               date: indexOf("data"), dates: indexOf("datas adicionais"), duration: indexOf("duracao"),
               client: indexOf("cliente"), module: indexOf("modulos", "modulo"), customModules: indexOf("modulos customizados"),
               type: indexOf("tipo"), requester: indexOf("solicitacao", "solicitante"), location: indexOf("local"),
-              participantsDirectory: indexOf("diretorio lista de participantes"), evaluationDirectory: indexOf("diretorio avaliacao"),
+              projectLink: indexOf("link do projeto ou chamado wrike ou fresh", "link do projeto ou chamado", "link projeto ou chamado"),
+              participantsDirectory: indexOf("diretorio lista de participantes"),
               survey: indexOf("envio da pesquisa de satisfacao"), cxResource: indexOf("recurso cx"), notes: indexOf("observacao")
             };
             if (indexes.date < 0) throw new Error("A coluna Data é obrigatória.");
@@ -2187,7 +2403,7 @@
                 month: date.slice(0, 7), date, dates: [...new Set([date, ...additionalDates])].sort(),
                 duration: normalizeDuration(get("duration")), client: get("client"), module: get("module") || (customModules.length ? "Módulo Customizado Cliente" : ""), customModules,
                 type: get("type"), requester: get("requester"), location: get("location"),
-                participantsDirectory: get("participantsDirectory"), evaluationDirectory: get("evaluationDirectory"),
+                projectLink: get("projectLink") || get("participantsDirectory"),
                 survey: get("survey"), cxResource: get("cxResource"), notes: get("notes"), locked: true
               });
               importedIds.push(importedId);
@@ -2217,12 +2433,12 @@
 
         const headers = [
           "Item", "Data", "Datas adicionais", "Duração", "Cliente", "Módulos", "Módulos customizados", "Tipo", "Solicitação", "Local",
-          "Diretório - Lista de Participantes", "Diretório - Avaliação",
+          "Link do Projeto ou Chamado (Wrike ou Fresh)",
           "Envio da Pesquisa de Satisfação", "Recurso CX", "Observação"
         ];
         const rows = monthRecords.map((record, index) => [
           index + 1, record.date, recordDates(record).filter(date => date !== record.date).join("|"), record.duration, record.client, record.module, (record.customModules || []).join("|"), record.type,
-          record.requester, record.location, record.participantsDirectory, record.evaluationDirectory,
+          record.requester, record.location, record.projectLink,
           record.survey, record.cxResource, record.notes
         ]);
         downloadCsv(`treinamentos-${monthKey(selectedMonth)}.csv`, [headers, ...rows]);
@@ -2256,8 +2472,20 @@
       });
       document.querySelector("#cancelCustomModules").addEventListener("click", closeCustomModuleDialog);
       document.querySelector("#saveCustomModules").addEventListener("click", saveCustomModules);
+      document.querySelector("#addAdditionalDate").addEventListener("click", addAdditionalDate);
+      document.querySelector("#singleDateOnly").addEventListener("click", () => saveAdditionalDates(true));
+      document.querySelector("#confirmAdditionalDates").addEventListener("click", () => saveAdditionalDates(false));
       document.querySelector("#exportCsv").addEventListener("click", exportCsv);
-      document.querySelector("#printPage").addEventListener("click", () => window.print());
+      body.addEventListener("focusout", () => {
+        setTimeout(() => {
+          if (pendingCloudRecords && !body.contains(document.activeElement)) {
+            const incoming = pendingCloudRecords;
+            pendingCloudRecords = null;
+            applyCloudRecords(incoming);
+            saveStatus.textContent = "Histórico sincronizado";
+          }
+        }, 0);
+      });
       document.querySelectorAll(".tab-btn").forEach(button => {
         button.addEventListener("click", () => {
           document.querySelectorAll(".tab-btn").forEach(tab => tab.classList.remove("active"));
